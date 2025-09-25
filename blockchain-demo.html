@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Blockchain Demo - Exam System</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        margin: 0;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        min-height: 100vh;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+      }
+
+      .header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .demo-section {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 20px;
+        margin: 20px 0;
+        border-radius: 10px;
+        border-left: 4px solid #4ecdc4;
+      }
+
+      .blockchain-viz {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        margin: 30px 0;
+        overflow-x: auto;
+      }
+
+      .chunk {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        padding: 15px;
+        margin: 5px;
+        border-radius: 10px;
+        min-width: 150px;
+        text-align: center;
+        position: relative;
+      }
+
+      .chunk::after {
+        content: "→";
+        position: absolute;
+        right: -20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 20px;
+        font-weight: bold;
+      }
+
+      .chunk:last-child::after {
+        display: none;
+      }
+
+      .code-block {
+        background: rgba(0, 0, 0, 0.4);
+        padding: 15px;
+        border-radius: 8px;
+        font-family: "Courier New", monospace;
+        margin: 15px 0;
+        overflow-x: auto;
+      }
+
+      .highlight {
+        background: rgba(255, 193, 7, 0.3);
+        padding: 2px 5px;
+        border-radius: 3px;
+      }
+
+      .step {
+        background: linear-gradient(45deg, #4ecdc4, #44a08d);
+        color: white;
+        padding: 10px 15px;
+        border-radius: 5px;
+        display: inline-block;
+        margin: 10px 5px;
+        font-weight: bold;
+      }
+
+      .api-endpoint {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 10px;
+        border-radius: 5px;
+        font-family: monospace;
+        border-left: 3px solid #4ecdc4;
+        margin: 10px 0;
+      }
+
+      .feature-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+        margin: 20px 0;
+      }
+
+      .feature {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 3px solid #4ecdc4;
+      }
+
+      .warning {
+        background: rgba(255, 193, 7, 0.2);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #ffc107;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🔗 Blockchain-Secured Exam System</h1>
+        <p>Live Demonstration Guide for Invigilator</p>
+      </div>
+
+      <div class="demo-section">
+        <h2>📋 Pre-Demo Checklist</h2>
+        <div class="step">1. Start MongoDB</div>
+        <div class="step">2. cd server && npm run dev</div>
+        <div class="step">3. cd client && npm run dev</div>
+        <div class="step">4. Open database-manager.html</div>
+      </div>
+
+      <div class="demo-section">
+        <h2>🔗 Blockchain Concept Visualization</h2>
+        <p>
+          When a teacher finalizes an exam, the system creates a blockchain:
+        </p>
+
+        <div class="blockchain-viz">
+          <div class="chunk">
+            <strong>GENESIS</strong><br />
+            <small>Starting Point</small>
+          </div>
+          <div class="chunk">
+            <strong>Chunk 1</strong><br />
+            <small>prevHash: GENESIS</small><br />
+            <small>hash: abc123...</small>
+          </div>
+          <div class="chunk">
+            <strong>Chunk 2</strong><br />
+            <small>prevHash: abc123...</small><br />
+            <small>hash: def456...</small>
+          </div>
+          <div class="chunk">
+            <strong>Chunk 3</strong><br />
+            <small>prevHash: def456...</small><br />
+            <small>hash: ghi789...</small>
+          </div>
+          <div class="chunk">
+            <strong>...</strong><br />
+            <small>5 total chunks</small>
+          </div>
+        </div>
+
+        <div class="warning">
+          <strong>🔒 Security:</strong> Each chunk is encrypted with
+          AES-256-CBC. Questions are split across chunks. If ANY chunk is
+          modified, the hash chain breaks and tampering is detected immediately.
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h2>🎯 Live Demonstration Steps</h2>
+
+        <h3>Step 1: Create Blockchain (Teacher Flow)</h3>
+        <ol>
+          <li><strong>Login:</strong> teacher@example.com / password123</li>
+          <li><strong>Create Exam:</strong> "Blockchain Demo Exam"</li>
+          <li><strong>Add Questions:</strong> 3-5 sample questions</li>
+          <li><strong>Finalize Exam</strong> ← THIS CREATES THE BLOCKCHAIN!</li>
+        </ol>
+
+        <div class="code-block">
+          // Backend creates blockchain automatically: const chunks = []; let
+          prevHash = 'GENESIS'; questionChunks.forEach((qChunk, index) => {
+          const payload = JSON.stringify({ questions: qChunk, prevHash, index
+          }); const currHash = <span class="highlight">sha256(payload)</span>;
+          const enc = <span class="highlight">aesEncrypt(payload)</span>;
+          chunks.push({ index, prevHash, hash: currHash, iv: enc.iv, cipherText:
+          enc.cipherText }); prevHash = currHash; // Chain the blocks! });
+        </div>
+
+        <h3>Step 2: Inspect Blockchain Structure</h3>
+        <div class="api-endpoint">
+          GET http://localhost:4000/api/debug/exams
+        </div>
+        <p>
+          Shows the actual blockchain with prevHash linking and encrypted
+          chunks.
+        </p>
+
+        <h3>Step 3: Student Exam Access (Decryption Demo)</h3>
+        <ol>
+          <li><strong>Register Student</strong></li>
+          <li><strong>Register for Exam</strong></li>
+          <li>
+            <strong>Take Exam</strong> ← Questions decrypted from blockchain!
+          </li>
+        </ol>
+
+        <div class="code-block">
+          // Student access decrypts all chunks: const questions = []; for
+          (const c of exam.chunks) { const payload = JSON.parse(<span
+            class="highlight"
+            >aesDecrypt(c.iv, c.cipherText)</span
+          >); questions.push(...payload.questions); } // Validates hash chain
+          integrity before serving questions
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h2>🛡️ Security Features Demonstrated</h2>
+        <div class="feature-list">
+          <div class="feature">
+            <h4>🔗 Blockchain Chaining</h4>
+            <p>
+              Each chunk links to previous via prevHash. Tampering breaks the
+              chain.
+            </p>
+          </div>
+          <div class="feature">
+            <h4>🔐 AES-256 Encryption</h4>
+            <p>Questions encrypted with industry-standard AES-256-CBC.</p>
+          </div>
+          <div class="feature">
+            <h4>🔍 SHA-256 Integrity</h4>
+            <p>Cryptographic hashes detect any data modification.</p>
+          </div>
+          <div class="feature">
+            <h4>🎲 Question Chunking</h4>
+            <p>Questions split across 5 chunks - no single point of failure.</p>
+          </div>
+          <div class="feature">
+            <h4>⏱️ Time-bound Access</h4>
+            <p>Exam sessions have strict time limits and validation.</p>
+          </div>
+          <div class="feature">
+            <h4>🔐 JWT Authentication</h4>
+            <p>Role-based access with secure token validation.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h2>💬 Key Talking Points</h2>
+
+        <h3>Why Blockchain for Exams?</h3>
+        <ul>
+          <li>
+            <strong>Tamper Detection:</strong> Any modification breaks the hash
+            chain
+          </li>
+          <li>
+            <strong>Data Integrity:</strong> Cryptographic proof of authenticity
+          </li>
+          <li>
+            <strong>Distributed Security:</strong> Questions split across
+            encrypted chunks
+          </li>
+          <li>
+            <strong>Audit Trail:</strong> Complete history of exam lifecycle
+          </li>
+        </ul>
+
+        <h3>Technical Advantages</h3>
+        <ul>
+          <li>
+            <strong>Performance:</strong> Chunking enables efficient processing
+            of large exams
+          </li>
+          <li>
+            <strong>Security:</strong> Multiple layers - encryption + hashing +
+            chaining
+          </li>
+          <li>
+            <strong>Scalability:</strong> Lightweight blockchain approach
+            without cryptocurrency overhead
+          </li>
+          <li>
+            <strong>Reliability:</strong> System continues working even if
+            individual chunks are corrupted
+          </li>
+        </ul>
+      </div>
+
+      <div class="demo-section">
+        <h2>❓ Expected Questions & Answers</h2>
+
+        <div class="warning">
+          <strong>Q:</strong> "How is this different from regular database
+          storage?"<br />
+          <strong>A:</strong> "Regular databases store data in plain text or
+          simple encryption. My system uses blockchain principles - each exam
+          chunk is cryptographically linked to the previous one, making
+          tampering immediately detectable through broken hash chains."
+        </div>
+
+        <div class="warning">
+          <strong>Q:</strong> "What if someone hacks the database?"<br />
+          <strong>A:</strong> "Even with database access, they need the 32-byte
+          encryption key to decrypt questions. Any modification attempts break
+          the blockchain integrity, immediately alerting administrators to
+          security breaches."
+        </div>
+
+        <div class="warning">
+          <strong>Q:</strong> "How do you ensure exam questions reach students
+          correctly?"<br />
+          <strong>A:</strong> "When students access exams, the system validates
+          the entire blockchain, decrypts all chunks in sequence, and
+          reconstructs questions. Only validated, unmodified content is served."
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h2>🚀 Advanced Features</h2>
+        <div class="feature-list">
+          <div class="feature">
+            <h4>🎛️ Database Manager</h4>
+            <p>Real-time monitoring and management interface</p>
+          </div>
+          <div class="feature">
+            <h4>🐛 Debug Tools</h4>
+            <p>Development tools for testing and validation</p>
+          </div>
+          <div class="feature">
+            <h4>📊 Analytics</h4>
+            <p>Comprehensive statistics and reporting</p>
+          </div>
+          <div class="feature">
+            <h4>🔄 Auto-grading</h4>
+            <p>Immediate results with blockchain-verified answers</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="demo-section">
+        <h2>🎓 Demo Success Indicators</h2>
+        <ul>
+          <li>✅ Blockchain creation visible in database (chunksCount: 5)</li>
+          <li>
+            ✅ Hash chain properly linked (each prevHash = previous chunk's
+            hash)
+          </li>
+          <li>✅ Questions encrypted and split across chunks</li>
+          <li>✅ Student can access and complete exam</li>
+          <li>✅ Results properly recorded and graded</li>
+          <li>✅ System demonstrates tamper detection capabilities</li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      // Add some interactivity for the demo
+      console.log("🔗 Blockchain Exam System Demo Ready!");
+      console.log("📊 Use these endpoints to show live data:");
+      console.log("   - http://localhost:4000/api/debug/stats");
+      console.log("   - http://localhost:4000/api/debug/exams");
+      console.log("   - http://localhost:4000/api/debug/users");
+
+      // Highlight current step
+      let currentStep = 0;
+      const steps = document.querySelectorAll(".step");
+
+      function highlightNextStep() {
+        if (currentStep > 0) {
+          steps[currentStep - 1].style.opacity = "0.6";
+        }
+        if (currentStep < steps.length) {
+          steps[currentStep].style.boxShadow =
+            "0 0 20px rgba(255, 255, 255, 0.5)";
+          steps[currentStep].style.transform = "scale(1.05)";
+          currentStep++;
+        }
+      }
+
+      // Auto-advance steps every 3 seconds (for demo flow)
+      // setInterval(highlightNextStep, 3000);
+    </script>
+  </body>
+</html>

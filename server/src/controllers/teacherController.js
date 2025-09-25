@@ -1,0 +1,139 @@
+﻿import { Exam } from '../models/Exam.js';
+import { sha256, aesEncrypt } from '../utils/crypto.js';
+
+export const createExam = async (req, res) => {
+  try {
+    const { 
+      title, 
+      description = '', 
+      durationMinutes = 60,
+      availableFrom,
+      availableTo,
+      examStartTime,
+      examEndTime,
+      allowLateEntry = false,
+      shuffleQuestions = false,
+      showResults = true
+    } = req.body;
+    
+    const exam = await Exam.create({ 
+      title, 
+      description,
+      createdBy: req.user.id, 
+      status: 'draft',
+      durationMinutes,
+      availableFrom: availableFrom ? new Date(availableFrom) : null,
+      availableTo: availableTo ? new Date(availableTo) : null,
+      examStartTime: examStartTime ? new Date(examStartTime) : null,
+      examEndTime: examEndTime ? new Date(examEndTime) : null,
+      allowLateEntry,
+      shuffleQuestions,
+      showResults
+    });
+    
+    res.json(exam);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to create exam' });
+  }
+};
+
+export const addQuestion = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const { text, options, correctIndex } = req.body;
+    const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    if (exam.status !== 'draft') return res.status(400).json({ error: 'Cannot modify finalized exam' });
+    exam.questions.push({ text, options, correctIndex });
+    await exam.save();
+    res.json(exam);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to add question' });
+  }
+};
+
+function splitIntoChunks(arr, parts) {
+  const result = [];
+  const size = Math.ceil(arr.length / parts);
+  for (let i = 0; i < parts; i++) {
+    const start = i * size;
+    const end = start + size;
+    const chunk = arr.slice(start, end);
+    if (chunk.length) result.push(chunk);
+  }
+  return result;
+}
+
+export const finalizeExam = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    if (exam.questions.length === 0) return res.status(400).json({ error: 'No questions to finalize' });
+
+    const parts = 5;
+    const questionChunks = splitIntoChunks(exam.questions, parts);
+
+    const chunks = [];
+    let prevHash = 'GENESIS';
+
+    questionChunks.forEach((qChunk, index) => {
+      const payload = JSON.stringify({ questions: qChunk, prevHash, index });
+      const currHash = sha256(payload);
+      const enc = aesEncrypt(payload);
+      chunks.push({ index, prevHash, hash: currHash, iv: enc.iv, cipherText: enc.cipherText });
+      prevHash = currHash;
+    });
+
+    exam.chunks = chunks;
+    exam.status = 'approved'; // Auto-approve finalized exams
+    await exam.save();
+
+    res.json({ examId: exam._id, chunks: chunks.map(c => ({ index: c.index, hash: c.hash, prevHash: c.prevHash })) });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to finalize exam' });
+  }
+};
+
+export const updateExamSettings = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    if (exam.status !== 'draft') return res.status(400).json({ error: 'Cannot modify finalized exam' });
+    
+    const { 
+      title, 
+      description,
+      durationMinutes,
+      availableFrom,
+      availableTo,
+      examStartTime,
+      examEndTime,
+      allowLateEntry,
+      shuffleQuestions,
+      showResults
+    } = req.body;
+    
+    if (title !== undefined) exam.title = title;
+    if (description !== undefined) exam.description = description;
+    if (durationMinutes !== undefined) exam.durationMinutes = durationMinutes;
+    if (availableFrom !== undefined) exam.availableFrom = availableFrom ? new Date(availableFrom) : null;
+    if (availableTo !== undefined) exam.availableTo = availableTo ? new Date(availableTo) : null;
+    if (examStartTime !== undefined) exam.examStartTime = examStartTime ? new Date(examStartTime) : null;
+    if (examEndTime !== undefined) exam.examEndTime = examEndTime ? new Date(examEndTime) : null;
+    if (allowLateEntry !== undefined) exam.allowLateEntry = allowLateEntry;
+    if (shuffleQuestions !== undefined) exam.shuffleQuestions = shuffleQuestions;
+    if (showResults !== undefined) exam.showResults = showResults;
+    
+    await exam.save();
+    res.json(exam);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to update exam settings' });
+  }
+};
+
+export const listMyExams = async (req, res) => {
+  const exams = await Exam.find({ createdBy: req.user.id }).select('-chunks.cipherText -chunks.iv');
+  res.json(exams);
+};

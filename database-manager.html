@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Database Management</title>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        min-height: 100vh;
+        color: white;
+      }
+
+      .container {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 30px;
+        border-radius: 15px;
+        backdrop-filter: blur(10px);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+        font-size: 2em;
+      }
+
+      .section {
+        margin-bottom: 30px;
+        padding: 20px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+      }
+
+      button {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 16px;
+        margin: 5px;
+        transition: all 0.3s ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      }
+
+      .view-btn {
+        background: linear-gradient(45deg, #4ecdc4, #44a08d);
+      }
+
+      .danger-btn {
+        background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+      }
+
+      #output {
+        background: rgba(0, 0, 0, 0.3);
+        padding: 15px;
+        border-radius: 8px;
+        margin-top: 20px;
+        min-height: 100px;
+        white-space: pre-wrap;
+        font-family: "Courier New", monospace;
+        font-size: 14px;
+      }
+
+      .warning {
+        background: rgba(255, 193, 7, 0.2);
+        padding: 15px;
+        border-radius: 8px;
+        border-left: 4px solid #ffc107;
+        margin: 20px 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>🗄️ Secure Exam Database Manager</h1>
+
+      <div class="section">
+        <h3>📊 View Database Contents</h3>
+        <button class="view-btn" onclick="viewData('stats')">
+          Database Statistics
+        </button>
+        <button class="view-btn" onclick="viewData('users')">All Users</button>
+        <button class="view-btn" onclick="viewData('exams')">All Exams</button>
+        <button class="view-btn" onclick="viewData('registrations')">
+          Registrations
+        </button>
+        <button class="view-btn" onclick="viewData('results')">Results</button>
+      </div>
+
+      <div class="section">
+        <h3>🔧 Fix Issues</h3>
+        <button class="view-btn" onclick="fixPendingExams()">
+          ✅ Approve Pending Exams
+        </button>
+      </div>
+
+      <div class="section">
+        <h3>🧹 Database Cleanup</h3>
+        <div class="warning">
+          <strong>⚠️ Warning:</strong> These actions will permanently delete
+          data. Make sure this is what you want!
+        </div>
+        <button class="danger-btn" onclick="clearTestData()">
+          Clear Test Data
+        </button>
+        <button
+          class="danger-btn"
+          onclick="resetDatabase()"
+          style="background: linear-gradient(45deg, #dc3545, #c82333)"
+        >
+          🚨 RESET ENTIRE DATABASE
+        </button>
+      </div>
+
+      <div id="output">
+        Click a button above to view database contents or perform actions...
+      </div>
+    </div>
+
+    <script>
+      const API_BASE = "http://localhost:4000/api/debug";
+
+      async function viewData(endpoint) {
+        const output = document.getElementById("output");
+        output.textContent = "Loading...";
+
+        try {
+          const response = await fetch(`${API_BASE}/${endpoint}`);
+          const data = await response.json();
+          output.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          output.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function clearTestData() {
+        if (
+          !confirm(
+            'Clear all test data? This will remove users with "test" or "debug" in their email.'
+          )
+        ) {
+          return;
+        }
+
+        const output = document.getElementById("output");
+        output.textContent = "Clearing test data...";
+
+        try {
+          const response = await fetch(`${API_BASE}/clear-test-data`, {
+            method: "DELETE",
+          });
+          const data = await response.json();
+          output.textContent = JSON.stringify(data, null, 2);
+        } catch (error) {
+          output.textContent = `Error: ${error.message}`;
+        }
+      }
+
+      async function fixPendingExams() {
+        const output = document.getElementById("output");
+        output.textContent = "Fixing pending exams...";
+
+        try {
+          const response = await fetch(`${API_BASE}/fix-pending-exams`, {
+            method: "POST",
+          });
+          const data = await response.json();
+          output.textContent = `✅ Fixed!\n\n${JSON.stringify(data, null, 2)}`;
+        } catch (error) {
+          output.textContent = `❌ Error: ${error.message}`;
+        }
+      }
+
+      async function resetDatabase() {
+        const confirmed = confirm(
+          "🚨 DANGER: This will delete ALL data from the database!\n\nThis includes:\n- All users\n- All exams\n- All registrations\n- All results\n\nAre you absolutely sure?"
+        );
+
+        if (!confirmed) return;
+
+        const doubleConfirm = confirm(
+          'This action cannot be undone. Type "RESET" and click OK if you want to proceed.'
+        );
+        if (!doubleConfirm) return;
+
+        const output = document.getElementById("output");
+        output.textContent = "Resetting database... This may take a moment.";
+
+        try {
+          const response = await fetch(`${API_BASE}/reset-database`, {
+            method: "DELETE",
+          });
+          const data = await response.json();
+          output.textContent = `✅ Database Reset Complete!\n\n${JSON.stringify(
+            data,
+            null,
+            2
+          )}`;
+        } catch (error) {
+          output.textContent = `❌ Error: ${error.message}`;
+        }
+      }
+    </script>
+  </body>
+</html>

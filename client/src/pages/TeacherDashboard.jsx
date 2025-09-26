@@ -38,6 +38,51 @@ export default function TeacherDashboard(){
     resultsReleaseMessage: ''
   });
 
+  // Helper function to calculate missing exam timing values
+  const calculateExamTiming = (updates, currentSettings) => {
+    const newSettings = { ...currentSettings, ...updates };
+    
+    // If we have start time and duration, calculate end time
+    if (newSettings.examStartTime && newSettings.durationMinutes && 
+        (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
+      const startTime = dayjs(newSettings.examStartTime);
+      const endTime = startTime.add(newSettings.durationMinutes, 'minute');
+      newSettings.examEndTime = endTime.format('YYYY-MM-DDTHH:mm');
+    }
+    
+    // If we have end time and duration, calculate start time
+    else if (newSettings.examEndTime && newSettings.durationMinutes && 
+             (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
+      const endTime = dayjs(newSettings.examEndTime);
+      const startTime = endTime.subtract(newSettings.durationMinutes, 'minute');
+      newSettings.examStartTime = startTime.format('YYYY-MM-DDTHH:mm');
+    }
+    
+    // If we have start time and end time, calculate duration
+    else if (newSettings.examStartTime && newSettings.examEndTime && 
+             (updates.examStartTime || updates.examEndTime)) {
+      const startTime = dayjs(newSettings.examStartTime);
+      const endTime = dayjs(newSettings.examEndTime);
+      const durationMinutes = endTime.diff(startTime, 'minute');
+      
+      if (durationMinutes > 0) {
+        newSettings.durationMinutes = durationMinutes;
+      } else {
+        // Invalid time range - end time is before start time
+        // Don't update and show an error
+        console.warn('End time cannot be before start time');
+        return currentSettings; // Return unchanged settings
+      }
+    }
+    
+    return newSettings;
+  };
+
+  // Enhanced setExamSettings that auto-calculates timing
+  const setExamSettingsWithCalculation = (updates) => {
+    setExamSettings(prev => calculateExamTiming(updates, prev));
+  };
+
   const load = async () => { 
     try {
       setLoading(true);
@@ -523,10 +568,13 @@ export default function TeacherDashboard(){
                 min="5"
                 max="300"
                 value={examSettings.durationMinutes} 
-                onChange={(e) => setExamSettings(prev => ({ ...prev, durationMinutes: Number(e.target.value) }))}
+                onChange={(e) => setExamSettingsWithCalculation({ durationMinutes: Number(e.target.value) })}
               />
               <div className="text-sm text-muted mt-1">
                 How long students have to complete the exam (5-300 minutes)
+                {examSettings.examStartTime && examSettings.examEndTime && (
+                  <span className="text-success"> • Auto-calculated from start/end times</span>
+                )}
               </div>
             </div>
           </div>
@@ -565,6 +613,10 @@ export default function TeacherDashboard(){
             <h3 className="text-lg font-semibold border-b border-border pb-2">Fixed Schedule (Optional)</h3>
             <div className="text-sm text-muted mb-3">
               If set, all students must take the exam at the same time. Leave empty for flexible scheduling.
+              <div className="mt-2 p-3 bg-brand-light rounded-lg text-brand">
+                <div className="font-medium">💡 Smart Timing</div>
+                Enter any two values (duration, start time, or end time) and the third will be calculated automatically.
+              </div>
             </div>
             
             <div className="grid grid-cols-2 gap-4">
@@ -574,8 +626,14 @@ export default function TeacherDashboard(){
                   className="input" 
                   type="datetime-local"
                   value={examSettings.examStartTime} 
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, examStartTime: e.target.value }))}
+                  onChange={(e) => setExamSettingsWithCalculation({ examStartTime: e.target.value })}
                 />
+                <div className="text-sm text-muted mt-1">
+                  When the exam begins
+                  {examSettings.examEndTime && examSettings.durationMinutes && !examSettings.examStartTime && (
+                    <span className="text-success"> • Will be calculated from end time and duration</span>
+                  )}
+                </div>
               </div>
               
               <div className="form-group">
@@ -584,8 +642,14 @@ export default function TeacherDashboard(){
                   className="input" 
                   type="datetime-local"
                   value={examSettings.examEndTime} 
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, examEndTime: e.target.value }))}
+                  onChange={(e) => setExamSettingsWithCalculation({ examEndTime: e.target.value })}
                 />
+                <div className="text-sm text-muted mt-1">
+                  When the exam ends
+                  {examSettings.examStartTime && examSettings.durationMinutes && !examSettings.examEndTime && (
+                    <span className="text-success"> • Will be calculated from start time and duration</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>

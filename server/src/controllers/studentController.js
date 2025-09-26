@@ -315,7 +315,8 @@ export const myResults = async (req, res) => {
   try {
     const results = await Result.find({ student: req.user.id })
       .populate('exam', 'title description durationMinutes showResults resultsReleaseType resultsReleaseDate resultsReleaseMessage examEndTime')
-      .sort({ submittedAt: -1 });
+      .sort({ submittedAt: -1 })
+      .limit(5);
     
     // Filter results based on release settings
     const visibleResults = results.map(result => {

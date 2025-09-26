@@ -106,6 +106,46 @@
       </div>
 
       <div class="section">
+        <h3>🔍 Blockchain Security Demo</h3>
+        <div style="margin-bottom: 15px">
+          <label for="examIdInput" style="display: block; margin-bottom: 5px"
+            >Exam ID for Tampering Demo:</label
+          >
+          <input
+            type="text"
+            id="examIdInput"
+            placeholder="Enter exam ID (get from 'All Exams')"
+            style="
+              width: 300px;
+              padding: 8px;
+              border-radius: 4px;
+              border: 1px solid #ccc;
+              background: rgba(255, 255, 255, 0.9);
+              color: #333;
+            "
+          />
+        </div>
+        <button class="view-btn" onclick="validateBlockchain()">
+          🔍 Validate Blockchain Integrity
+        </button>
+        <button
+          class="danger-btn"
+          onclick="tamperWithExam()"
+          style="background: linear-gradient(45deg, #ff9500, #ff6b00)"
+        >
+          🚨 Simulate Hacker Attack (Tamper)
+        </button>
+        <div class="warning" style="margin-top: 15px">
+          <strong>🎯 Demo Instructions:</strong><br />
+          1. First create and finalize an exam as teacher<br />
+          2. Get the exam ID from "All Exams" button above<br />
+          3. Validate blockchain - should show "VALID"<br />
+          4. Simulate tampering - corrupts the blockchain<br />
+          5. Validate again - should show "COMPROMISED"
+        </div>
+      </div>
+
+      <div class="section">
         <h3>🧹 Database Cleanup</h3>
         <div class="warning">
           <strong>⚠️ Warning:</strong> These actions will permanently delete
@@ -179,6 +219,103 @@
           output.textContent = `✅ Fixed!\n\n${JSON.stringify(data, null, 2)}`;
         } catch (error) {
           output.textContent = `❌ Error: ${error.message}`;
+        }
+      }
+
+      async function validateBlockchain() {
+        const examId = document.getElementById("examIdInput").value.trim();
+        if (!examId) {
+          alert(
+            'Please enter an Exam ID first! Get it from "All Exams" button.'
+          );
+          return;
+        }
+
+        const output = document.getElementById("output");
+        output.textContent = "🔍 Validating blockchain integrity...";
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/validate-blockchain/${examId}`
+          );
+          const data = await response.json();
+
+          let statusIcon = data.blockchainStatus === "VALID" ? "✅" : "🚨";
+          let statusColor =
+            data.blockchainStatus === "VALID" ? "#28a745" : "#dc3545";
+
+          output.innerHTML = `
+<span style="color: ${statusColor}; font-weight: bold; font-size: 18px;">
+${statusIcon} BLOCKCHAIN STATUS: ${data.blockchainStatus}
+</span>
+
+📊 Validation Summary:
+- Total Chunks: ${data.totalChunks}
+- Valid Chunks: ${data.validChunks}
+- Invalid Chunks: ${data.invalidChunks}
+
+🔒 Security Assessment:
+${data.securityAssessment}
+
+📋 Detailed Results:
+${JSON.stringify(data, null, 2)}`;
+        } catch (error) {
+          output.textContent = `❌ Error validating blockchain: ${error.message}`;
+        }
+      }
+
+      async function tamperWithExam() {
+        const examId = document.getElementById("examIdInput").value.trim();
+        if (!examId) {
+          alert(
+            'Please enter an Exam ID first! Get it from "All Exams" button.'
+          );
+          return;
+        }
+
+        const confirmed = confirm(
+          "🚨 SIMULATE HACKER ATTACK 🚨\n\nThis will:\n- Corrupt encrypted exam data\n- Break the blockchain hash chain\n- Demonstrate tamper detection\n\nProceed with simulation?"
+        );
+
+        if (!confirmed) return;
+
+        const output = document.getElementById("output");
+        output.textContent =
+          "🚨 Simulating hacker attack - corrupting blockchain...";
+
+        try {
+          const response = await fetch(`${API_BASE}/tamper-exam/${examId}`, {
+            method: "POST",
+          });
+          const data = await response.json();
+
+          output.innerHTML = `
+<span style="color: #dc3545; font-weight: bold; font-size: 18px;">
+🚨 HACKER ATTACK SIMULATED!
+</span>
+
+💥 Tampering Details:
+- Target: Chunk ${data.tamperingDetails.chunkIndex + 1}
+- Status: ${data.tamperingDetails.integrityStatus}
+- Original Data: ${data.tamperingDetails.originalCipherText}
+- Corrupted Data: ${data.tamperingDetails.tamperedCipherText}
+
+⛓️ Blockchain Comparison:
+BEFORE (Original):
+${data.originalBlockchain
+  .map((c) => `Chunk ${c.index}: ${c.hash} <- ${c.prevHash}`)
+  .join("\n")}
+
+AFTER (Tampered):
+${data.tamperedBlockchain
+  .map((c) => `Chunk ${c.index}: ${c.hash} <- ${c.prevHash}`)
+  .join("\n")}
+
+🔍 Now click "Validate Blockchain Integrity" to see the security breach detection!
+
+${JSON.stringify(data, null, 2)}`;
+        } catch (error) {
+          output.textContent = `❌ Error simulating tampering: ${error.message}`;
         }
       }
 

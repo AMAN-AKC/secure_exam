@@ -162,6 +162,148 @@ router.post('/fix-pending-exams', async (req, res) => {
   }
 });
 
+// Demonstrate blockchain tampering detection
+router.post('/tamper-exam/:examId', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Only available in development' });
+  }
+  
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findById(examId);
+    
+    if (!exam || !exam.chunks || exam.chunks.length === 0) {
+      return res.status(404).json({ error: 'Exam not found or not finalized' });
+    }
+
+    // Store original blockchain state
+    const originalChunks = JSON.parse(JSON.stringify(exam.chunks));
+    
+    // Tamper with chunk 2 (index 1) - modify the encrypted content
+    if (exam.chunks.length > 1) {
+      const tamperedChunk = exam.chunks[1];
+      const originalCipherText = tamperedChunk.cipherText;
+      
+      // Corrupt the encrypted data (simulate hacker modification)
+      tamperedChunk.cipherText = Buffer.from(originalCipherText, 'base64')
+        .toString('hex')
+        .split('')
+        .map(char => char === 'a' ? 'b' : char === '1' ? '2' : char)
+        .join('')
+        .substring(0, originalCipherText.length);
+      
+      // Convert back to base64
+      tamperedChunk.cipherText = Buffer.from(tamperedChunk.cipherText.substring(0, 32), 'hex').toString('base64');
+      
+      await exam.save();
+      
+      res.json({
+        message: 'Blockchain tampered! Chunk 2 data corrupted - hash chain integrity compromised',
+        tamperingDetails: {
+          chunkIndex: 1,
+          originalCipherText: originalCipherText.substring(0, 50) + '...',
+          tamperedCipherText: tamperedChunk.cipherText.substring(0, 50) + '...',
+          expectedPrevHash: originalChunks[2] ? originalChunks[2].prevHash : 'N/A',
+          actualHash: tamperedChunk.hash,
+          integrityStatus: 'COMPROMISED - Hash chain broken!'
+        },
+        originalBlockchain: originalChunks.map(c => ({
+          index: c.index,
+          hash: c.hash.substring(0, 16) + '...',
+          prevHash: c.prevHash.substring(0, 16) + '...'
+        })),
+        tamperedBlockchain: exam.chunks.map(c => ({
+          index: c.index,
+          hash: c.hash.substring(0, 16) + '...',
+          prevHash: c.prevHash.substring(0, 16) + '...'
+        }))
+      });
+    } else {
+      res.status(400).json({ error: 'Need at least 2 chunks to demonstrate tampering' });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to tamper with exam: ' + error.message });
+  }
+});
+
+// Validate blockchain integrity
+router.get('/validate-blockchain/:examId', async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findById(examId);
+    
+    if (!exam || !exam.chunks) {
+      return res.status(404).json({ error: 'Exam not found' });
+    }
+
+    const validationResults = [];
+    let isBlockchainValid = true;
+    
+    for (let i = 0; i < exam.chunks.length; i++) {
+      const chunk = exam.chunks[i];
+      const validation = {
+        chunkIndex: i,
+        hash: chunk.hash,
+        prevHash: chunk.prevHash,
+        isValid: true,
+        issues: []
+      };
+      
+      // Check if prevHash matches previous chunk's hash
+      if (i > 0) {
+        const prevChunk = exam.chunks[i - 1];
+        if (chunk.prevHash !== prevChunk.hash) {
+          validation.isValid = false;
+          validation.issues.push(`prevHash mismatch: expected ${prevChunk.hash}, got ${chunk.prevHash}`);
+          isBlockchainValid = false;
+        }
+      } else {
+        // First chunk should have GENESIS
+        if (chunk.prevHash !== 'GENESIS') {
+          validation.isValid = false;
+          validation.issues.push(`Genesis chunk prevHash should be 'GENESIS', got '${chunk.prevHash}'`);
+          isBlockchainValid = false;
+        }
+      }
+      
+      // Try to decrypt and validate hash
+      try {
+        const { aesDecrypt, sha256 } = await import('../utils/crypto.js');
+        const decryptedPayload = aesDecrypt(chunk.iv, chunk.cipherText);
+        const parsedPayload = JSON.parse(decryptedPayload);
+        const calculatedHash = sha256(decryptedPayload);
+        
+        if (calculatedHash !== chunk.hash) {
+          validation.isValid = false;
+          validation.issues.push(`Hash mismatch: calculated ${calculatedHash}, stored ${chunk.hash}`);
+          isBlockchainValid = false;
+        }
+      } catch (decryptError) {
+        validation.isValid = false;
+        validation.issues.push(`Decryption failed: ${decryptError.message}`);
+        isBlockchainValid = false;
+      }
+      
+      validationResults.push(validation);
+    }
+    
+    res.json({
+      examId,
+      examTitle: exam.title,
+      blockchainStatus: isBlockchainValid ? 'VALID' : 'COMPROMISED',
+      totalChunks: exam.chunks.length,
+      validChunks: validationResults.filter(v => v.isValid).length,
+      invalidChunks: validationResults.filter(v => !v.isValid).length,
+      validationDetails: validationResults,
+      securityAssessment: isBlockchainValid 
+        ? 'Blockchain integrity confirmed - no tampering detected'
+        : '🚨 SECURITY BREACH DETECTED - Blockchain has been compromised!'
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to validate blockchain: ' + error.message });
+  }
+});
+
 // Reset entire database (development only)
 router.delete('/reset-database', async (req, res) => {
   if (process.env.NODE_ENV !== 'development') {

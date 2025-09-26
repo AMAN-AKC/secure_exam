@@ -13,7 +13,10 @@ export const createExam = async (req, res) => {
       examEndTime,
       allowLateEntry = false,
       shuffleQuestions = false,
-      showResults = true
+      showResults = true,
+      resultsReleaseType = 'after_exam_ends',
+      resultsReleaseDate,
+      resultsReleaseMessage = ''
     } = req.body;
     
     const exam = await Exam.create({ 
@@ -28,7 +31,10 @@ export const createExam = async (req, res) => {
       examEndTime: examEndTime ? new Date(examEndTime) : null,
       allowLateEntry,
       shuffleQuestions,
-      showResults
+      showResults,
+      resultsReleaseType,
+      resultsReleaseDate: resultsReleaseDate ? new Date(resultsReleaseDate) : null,
+      resultsReleaseMessage
     });
     
     res.json(exam);
@@ -112,7 +118,10 @@ export const updateExamSettings = async (req, res) => {
       examEndTime,
       allowLateEntry,
       shuffleQuestions,
-      showResults
+      showResults,
+      resultsReleaseType,
+      resultsReleaseDate,
+      resultsReleaseMessage
     } = req.body;
     
     if (title !== undefined) exam.title = title;
@@ -125,6 +134,9 @@ export const updateExamSettings = async (req, res) => {
     if (allowLateEntry !== undefined) exam.allowLateEntry = allowLateEntry;
     if (shuffleQuestions !== undefined) exam.shuffleQuestions = shuffleQuestions;
     if (showResults !== undefined) exam.showResults = showResults;
+    if (resultsReleaseType !== undefined) exam.resultsReleaseType = resultsReleaseType;
+    if (resultsReleaseDate !== undefined) exam.resultsReleaseDate = resultsReleaseDate ? new Date(resultsReleaseDate) : null;
+    if (resultsReleaseMessage !== undefined) exam.resultsReleaseMessage = resultsReleaseMessage;
     
     await exam.save();
     res.json(exam);

@@ -1,4 +1,5 @@
 ﻿import React, { useEffect, useState } from 'react';
+import dayjs from 'dayjs';
 import api from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Button from '../components/Button.jsx';
@@ -31,7 +32,10 @@ export default function TeacherDashboard(){
     examEndTime: '',
     allowLateEntry: false,
     shuffleQuestions: false,
-    showResults: true
+    showResults: true,
+    resultsReleaseType: 'after_exam_ends',
+    resultsReleaseDate: '',
+    resultsReleaseMessage: ''
   });
 
   const load = async () => { 
@@ -88,7 +92,10 @@ export default function TeacherDashboard(){
       examEndTime: examItem.examEndTime ? new Date(examItem.examEndTime).toISOString().slice(0, 16) : '',
       allowLateEntry: examItem.allowLateEntry || false,
       shuffleQuestions: examItem.shuffleQuestions || false,
-      showResults: examItem.showResults !== false
+      showResults: examItem.showResults !== false,
+      resultsReleaseType: examItem.resultsReleaseType || 'after_exam_ends',
+      resultsReleaseDate: examItem.resultsReleaseDate ? new Date(examItem.resultsReleaseDate).toISOString().slice(0, 16) : '',
+      resultsReleaseMessage: examItem.resultsReleaseMessage || ''
     });
     setShowSettingsModal(true);
   };
@@ -250,7 +257,7 @@ export default function TeacherDashboard(){
                       <div className="flex items-center gap-4 text-sm text-muted">
                         <span>📊 Questions: {examItem.questions?.length || 0}</span>
                         <span>⏱️ Duration: {examItem.durationMinutes || 60}min</span>
-                        <span>📅 Created: {new Date(examItem.createdAt).toLocaleDateString()}</span>
+                        <span>📅 Created: {dayjs(examItem.createdAt).format('MMM DD, YYYY')}</span>
                         <span className={`badge ${statusColors[examItem.status]}`}>
                           {examItem.status.toUpperCase()}
                         </span>
@@ -628,6 +635,61 @@ export default function TeacherDashboard(){
               </label>
             </div>
           </div>
+
+          {/* Result Release Settings */}
+          {examSettings.showResults && (
+            <div>
+              <h3 className="text-lg font-semibold border-b border-border pb-2">Result Release Settings</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="form-label">When should results be visible?</label>
+                  <select 
+                    value={examSettings.resultsReleaseType}
+                    onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseType: e.target.value }))}
+                    className="input w-full"
+                  >
+                    <option value="immediate">Immediately after submission</option>
+                    <option value="after_exam_ends">After exam ends</option>
+                    <option value="custom_date">Custom date and time</option>
+                  </select>
+                  <div className="text-sm text-muted mt-1">
+                    {examSettings.resultsReleaseType === 'immediate' && 'Students see results right after they submit'}
+                    {examSettings.resultsReleaseType === 'after_exam_ends' && 'Students see results only after the exam end time'}
+                    {examSettings.resultsReleaseType === 'custom_date' && 'Students see results at the date/time you specify'}
+                  </div>
+                </div>
+
+                {examSettings.resultsReleaseType === 'custom_date' && (
+                  <div>
+                    <label className="form-label">Results Release Date & Time</label>
+                    <input 
+                      type="datetime-local"
+                      value={examSettings.resultsReleaseDate}
+                      onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseDate: e.target.value }))}
+                      className="input w-full"
+                    />
+                    <div className="text-sm text-muted mt-1">
+                      Results will be visible after both this date/time AND the exam ends
+                    </div>
+                  </div>
+                )}
+
+                <div>
+                  <label className="form-label">Result Release Message (Optional)</label>
+                  <textarea 
+                    value={examSettings.resultsReleaseMessage}
+                    onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseMessage: e.target.value }))}
+                    placeholder="Optional message to show with results (e.g., 'Great job on completing the exam!')"
+                    className="input w-full resize-vertical min-h-20"
+                    rows={3}
+                  />
+                  <div className="text-sm text-muted mt-1">
+                    This message will be displayed when students view their results
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex justify-end gap-3 pt-4 border-t border-border">

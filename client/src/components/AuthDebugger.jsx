@@ -7,7 +7,7 @@ const AuthDebugger = () => {
   const [results, setResults] = useState([]);
 
   const addResult = (action, success, data) => {
-    const timestamp = new Date().toLocaleTimeString();
+    const timestamp = new Date().toLocaleTimeString('en-GB', { hour12: false });
     setResults(prev => [...prev, { timestamp, action, success, data }]);
   };
 

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import { connectDb } from './config/db.js';
-import { seedAdminIfNeeded } from './config/seed.js';
+import { seedAdminIfNeeded, seedSampleData } from './config/seed.js';
 import router from './routes/index.js';
 
 dotenv.config();
@@ -24,6 +24,7 @@ const PORT = process.env.PORT || 4000;
 connectDb()
   .then(async () => {
     await seedAdminIfNeeded();
+    await seedSampleData();
     app.listen(PORT, () => {
       console.log(`API listening on port ${PORT}`);
     });

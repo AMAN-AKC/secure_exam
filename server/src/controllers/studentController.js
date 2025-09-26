@@ -6,6 +6,7 @@ import { aesDecrypt } from '../utils/crypto.js';
 
 export const listApprovedExams = async (req, res) => {
   try {
+    console.log('Student listApprovedExams called by user:', req.user);
     const now = new Date();
     
     // Find approved exams that are currently available for registration
@@ -19,9 +20,13 @@ export const listApprovedExams = async (req, res) => {
     .populate('createdBy', 'name email')
     .select('title description createdBy durationMinutes availableFrom availableTo examStartTime examEndTime questions allowLateEntry createdAt');
     
+    console.log(`Found ${exams.length} approved exams`);
+    
     // Check which exams the student is already registered for
     const registrations = await Registration.find({ student: req.user.id }).select('exam');
     const registeredExamIds = registrations.map(r => r.exam.toString());
+    
+    console.log(`Student has ${registrations.length} registrations`);
     
     const examData = exams.map(exam => ({
       _id: exam._id, // Keep original _id for compatibility
@@ -40,9 +45,11 @@ export const listApprovedExams = async (req, res) => {
       isRegistered: registeredExamIds.includes(exam._id.toString())
     }));
     
+    console.log('Returning exam data:', examData);
     res.json(examData);
   } catch (error) {
-    res.status(500).json({ error: 'Failed to fetch exams' });
+    console.error('Error in listApprovedExams:', error);
+    res.status(500).json({ error: 'Failed to fetch exams', details: error.message });
   }
 };
 
@@ -246,7 +253,7 @@ export const accessExam = async (req, res) => {
 export const submitExam = async (req, res) => {
   try {
     const { examId } = req.params;
-    const { answers } = req.body; // array of selected indices
+    const { answers, timeTaken } = req.body; // array of selected indices and time taken
     const reg = await Registration.findOne({ student: req.user.id, exam: examId });
     if (!reg) return res.status(403).json({ error: 'Not registered' });
 
@@ -259,24 +266,220 @@ export const submitExam = async (req, res) => {
     }
 
     let score = 0;
+    const detailedAnswers = [];
+    
     questions.forEach((q, i) => {
-      if (answers && answers[i] === q.correctIndex) score += 1;
+      const studentAnswerIndex = answers && answers[i] !== null && answers[i] !== undefined ? answers[i] : null;
+      const isCorrect = studentAnswerIndex === q.correctIndex;
+      
+      if (isCorrect) score += 1;
+      
+      detailedAnswers.push({
+        questionIndex: i,
+        questionText: q.text,
+        options: q.options,
+        correctAnswerIndex: q.correctIndex,
+        correctAnswerText: q.options[q.correctIndex],
+        studentAnswerIndex: studentAnswerIndex,
+        studentAnswerText: studentAnswerIndex !== null ? q.options[studentAnswerIndex] : null,
+        isCorrect: isCorrect,
+        points: 1
+      });
     });
 
     const total = questions.length;
+    const percentage = Math.round((score / total) * 100);
+    
     const result = await Result.findOneAndUpdate(
       { student: req.user.id, exam: exam._id },
-      { score, total, submittedAt: new Date() },
+      { 
+        score, 
+        total, 
+        percentage,
+        submittedAt: new Date(),
+        answers: detailedAnswers,
+        timeTaken: timeTaken || null,
+        examDuration: exam.durationMinutes || null
+      },
       { new: true, upsert: true }
     );
 
     res.json(result);
   } catch (e) {
+    console.error('Error submitting exam:', e);
     res.status(500).json({ error: 'Failed to submit exam' });
   }
 };
 
 export const myResults = async (req, res) => {
-  const results = await Result.find({ student: req.user.id }).populate('exam', 'title');
-  res.json(results);
+  try {
+    const results = await Result.find({ student: req.user.id })
+      .populate('exam', 'title description durationMinutes showResults resultsReleaseType resultsReleaseDate resultsReleaseMessage examEndTime')
+      .sort({ submittedAt: -1 });
+    
+    // Filter results based on release settings
+    const visibleResults = results.map(result => {
+      const exam = result.exam;
+      const now = new Date();
+      
+      // Check if results should be shown
+      if (!exam.showResults) {
+        return {
+          ...result.toObject(),
+          resultsHidden: true,
+          hideReason: 'Results are not available for this exam'
+        };
+      }
+      
+      // Check result release timing
+      let resultsAvailable = false;
+      let hideReason = '';
+      
+      switch (exam.resultsReleaseType) {
+        case 'immediate':
+          resultsAvailable = true;
+          break;
+          
+        case 'after_exam_ends':
+          if (exam.examEndTime) {
+            // Fixed schedule exam - check if exam end time has passed
+            resultsAvailable = now >= new Date(exam.examEndTime);
+            hideReason = resultsAvailable ? '' : `Results will be available after ${new Date(exam.examEndTime).toLocaleString('en-GB', { hour12: false })}`;
+          } else {
+            // Flexible exam - results available immediately after submission
+            resultsAvailable = true;
+          }
+          break;
+          
+        case 'custom_date':
+          if (exam.resultsReleaseDate) {
+            const releaseTime = new Date(exam.resultsReleaseDate);
+            const examEndTime = exam.examEndTime ? new Date(exam.examEndTime) : new Date(result.submittedAt);
+            
+            // Results available only after BOTH exam ends AND custom release date
+            resultsAvailable = now >= releaseTime && now >= examEndTime;
+            
+            if (!resultsAvailable) {
+              const waitUntil = releaseTime > examEndTime ? releaseTime : examEndTime;
+              hideReason = `Results will be available on ${waitUntil.toLocaleString('en-GB', { hour12: false })}`;
+            }
+          } else {
+            // Fallback to after exam ends if no custom date set
+            resultsAvailable = exam.examEndTime ? now >= new Date(exam.examEndTime) : true;
+            hideReason = resultsAvailable ? '' : 'Results will be available after the exam ends';
+          }
+          break;
+          
+        default:
+          resultsAvailable = true;
+      }
+      
+      if (resultsAvailable) {
+        return result.toObject();
+      } else {
+        return {
+          _id: result._id,
+          exam: {
+            _id: exam._id,
+            title: exam.title,
+            description: exam.description
+          },
+          submittedAt: result.submittedAt,
+          resultsHidden: true,
+          hideReason: hideReason,
+          resultsReleaseMessage: exam.resultsReleaseMessage
+        };
+      }
+    });
+    
+    res.json(visibleResults);
+  } catch (error) {
+    console.error('Error fetching results:', error);
+    res.status(500).json({ error: 'Failed to fetch results' });
+  }
+};
+
+export const getDetailedResult = async (req, res) => {
+  try {
+    const { resultId } = req.params;
+    
+    const result = await Result.findOne({ 
+      _id: resultId, 
+      student: req.user.id 
+    }).populate('exam', 'title description durationMinutes createdBy showResults resultsReleaseType resultsReleaseDate resultsReleaseMessage examEndTime');
+    
+    if (!result) {
+      return res.status(404).json({ error: 'Result not found' });
+    }
+    
+    // Check if result has detailed answers (for backward compatibility)
+    if (!result.answers || result.answers.length === 0) {
+      return res.status(400).json({ 
+        error: 'Detailed results not available', 
+        message: 'This exam was taken before detailed results were implemented' 
+      });
+    }
+    
+    // Check if detailed results should be shown (same logic as myResults)
+    const exam = result.exam;
+    const now = new Date();
+    
+    if (!exam.showResults) {
+      return res.status(403).json({ 
+        error: 'Results not available', 
+        message: 'Detailed results are not available for this exam' 
+      });
+    }
+    
+    // Check result release timing
+    let resultsAvailable = false;
+    let hideReason = '';
+    
+    switch (exam.resultsReleaseType) {
+      case 'immediate':
+        resultsAvailable = true;
+        break;
+        
+      case 'after_exam_ends':
+        if (exam.examEndTime) {
+          resultsAvailable = now >= new Date(exam.examEndTime);
+          hideReason = resultsAvailable ? '' : `Results will be available after ${new Date(exam.examEndTime).toLocaleString('en-GB', { hour12: false })}`;
+        } else {
+          resultsAvailable = true;
+        }
+        break;
+        
+      case 'custom_date':
+        if (exam.resultsReleaseDate) {
+          const releaseTime = new Date(exam.resultsReleaseDate);
+          const examEndTime = exam.examEndTime ? new Date(exam.examEndTime) : new Date(result.submittedAt);
+          
+          resultsAvailable = now >= releaseTime && now >= examEndTime;
+          
+          if (!resultsAvailable) {
+            const waitUntil = releaseTime > examEndTime ? releaseTime : examEndTime;
+            hideReason = `Results will be available on ${waitUntil.toLocaleString('en-GB', { hour12: false })}`;
+          }
+        } else {
+          resultsAvailable = exam.examEndTime ? now >= new Date(exam.examEndTime) : true;
+        }
+        break;
+        
+      default:
+        resultsAvailable = true;
+    }
+    
+    if (!resultsAvailable) {
+      return res.status(403).json({ 
+        error: 'Results not yet available', 
+        message: hideReason,
+        releaseMessage: exam.resultsReleaseMessage
+      });
+    }
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error fetching detailed result:', error);
+    res.status(500).json({ error: 'Failed to fetch detailed result' });
+  }
 };

@@ -21,6 +21,8 @@ export default function StudentDashboard(){
   const [submitting, setSubmitting] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState(null);
+  const [examStartTime, setExamStartTime] = useState(null);
+  const [showDetailedResult, setShowDetailedResult] = useState(null);
 
   const resultsByExamId = useMemo(()=>{
     const map = new Map();
@@ -38,32 +40,38 @@ export default function StudentDashboard(){
   const load = async () => {
     try {
       console.log('StudentDashboard: Starting to load data...');
+      console.log('Current user:', user);
+      console.log('Auth token:', localStorage.getItem('token') ? 'Present' : 'Missing');
       setLoading(true);
       setError(null);
       
       // Load each endpoint separately to identify which one fails
       console.log('Loading exams...');
       const ex = await api.get('/student/exams');
-      console.log('Exams loaded:', ex.data);
+      console.log('Exams loaded successfully:', ex.data);
       
       console.log('Loading registrations...');
       const rg = await api.get('/student/registrations');
-      console.log('Registrations loaded:', rg.data);
+      console.log('Registrations loaded successfully:', rg.data);
       
       console.log('Loading results...');
       const rs = await api.get('/student/results');
-      console.log('Results loaded:', rs.data);
+      console.log('Results loaded successfully:', rs.data);
       
       setApproved(ex.data || []);
       setRegs(rg.data || []);
       setResults(rs.data || []);
       
       console.log('StudentDashboard: All data loaded successfully');
+      console.log('Final state - Approved exams:', ex.data?.length || 0);
+      console.log('Final state - Registrations:', rg.data?.length || 0);
+      console.log('Final state - Results:', rs.data?.length || 0);
     } catch (error) {
       console.error('StudentDashboard: Error loading data:', error);
       console.error('Error details:', error.response?.data);
       console.error('Error status:', error.response?.status);
-      console.error('Error config:', error.config);
+      console.error('Error config:', error.config?.url);
+      console.error('Request headers:', error.config?.headers);
       setError(`Failed to load data: ${error.response?.data?.error || error.message}`);
     } finally {
       setLoading(false);
@@ -94,8 +102,8 @@ export default function StudentDashboard(){
       // Show registration success with timing details
       const message = data.message || 'Registration successful. Check your schedule.';
       if (data.startTime && data.endTime) {
-        const startTime = new Date(data.startTime).toLocaleString();
-        const endTime = new Date(data.endTime).toLocaleTimeString();
+        const startTime = dayjs(data.startTime).format('MMM DD, YYYY at HH:mm');
+        const endTime = dayjs(data.endTime).format('HH:mm');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
         alert(message);
@@ -113,6 +121,7 @@ export default function StudentDashboard(){
       setAnswers(new Array(data.questions.length).fill(null));
       setCurrentQuestion(0);
       setFlaggedQuestions(new Set());
+      setExamStartTime(new Date()); // Track when exam actually started
     } catch (e) {
       if (e?.response?.status === 403) {
         const error = e?.response?.data;
@@ -171,10 +180,19 @@ export default function StudentDashboard(){
   const submitExam = async () => {
     try {
       setSubmitting(true);
-      const { data } = await api.post(`/student/exams/${activeExam.exam.id}/submit`, { answers });
-      alert(`Exam submitted successfully!\nYour Score: ${data.score}/${data.total}`);
+      
+      // Calculate time taken
+      const timeTaken = examStartTime ? Math.floor((new Date() - examStartTime) / 1000) : null;
+      
+      const { data } = await api.post(`/student/exams/${activeExam.exam.id}/submit`, { 
+        answers,
+        timeTaken 
+      });
+      
+      alert(`Exam submitted successfully!\nYour Score: ${data.score}/${data.total} (${data.percentage}%)`);
       setActiveExam(null);
       setShowConfirmModal(false);
+      setExamStartTime(null);
       await load();
     } catch (error) {
       alert('Failed to submit exam. Please try again.');
@@ -185,6 +203,15 @@ export default function StudentDashboard(){
 
   const handleSubmitClick = () => {
     setShowConfirmModal(true);
+  };
+
+  const viewDetailedResult = async (resultId) => {
+    try {
+      const { data } = await api.get(`/student/results/${resultId}/details`);
+      setShowDetailedResult(data);
+    } catch (error) {
+      alert(error?.response?.data?.message || 'Failed to load detailed results');
+    }
   };
 
   if (activeExam) {
@@ -357,6 +384,143 @@ export default function StudentDashboard(){
               </Button>
             </div>
           </div>
+        </Modal>
+
+        {/* Detailed Result Modal */}
+        <Modal
+          isOpen={!!showDetailedResult}
+          onClose={() => setShowDetailedResult(null)}
+          title="Detailed Exam Results"
+          size="large"
+        >
+          {showDetailedResult && (
+            <div className="space-y-6">
+              {/* Result Summary */}
+              <div className="bg-panel-light rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">{showDetailedResult.exam?.title}</h3>
+                    <div className="text-sm text-muted space-y-1">
+                      <div>📅 Submitted: {dayjs(showDetailedResult.submittedAt).format('MMM DD, YYYY HH:mm')}</div>
+                      {showDetailedResult.timeTaken && (
+                        <div>⏱️ Time Taken: {Math.floor(showDetailedResult.timeTaken / 60)}m {showDetailedResult.timeTaken % 60}s</div>
+                      )}
+                      {showDetailedResult.examDuration && (
+                        <div>📋 Allocated Time: {showDetailedResult.examDuration} minutes</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold mb-2">
+                      {showDetailedResult.score}/{showDetailedResult.total}
+                    </div>
+                    <div className={`text-lg font-semibold ${
+                      showDetailedResult.percentage >= 70 ? 'text-success' : 
+                      showDetailedResult.percentage >= 60 ? 'text-warning' : 'text-danger'
+                    }`}>
+                      {showDetailedResult.percentage}%
+                    </div>
+                    <div className={`badge ${
+                      showDetailedResult.percentage >= 90 ? 'badge-success' : 
+                      showDetailedResult.percentage >= 80 ? 'badge-success' : 
+                      showDetailedResult.percentage >= 70 ? 'badge-warning' : 
+                      showDetailedResult.percentage >= 60 ? 'badge-warning' : 'badge-danger'
+                    }`}>
+                      Grade: {showDetailedResult.percentage >= 90 ? 'A' : 
+                              showDetailedResult.percentage >= 80 ? 'B' : 
+                              showDetailedResult.percentage >= 70 ? 'C' : 
+                              showDetailedResult.percentage >= 60 ? 'D' : 'F'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Questions and Answers */}
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                <h4 className="font-semibold mb-3">Question-wise Analysis</h4>
+                {showDetailedResult.answers?.map((answer, index) => (
+                  <div 
+                    key={index} 
+                    className={`border rounded-lg p-4 ${
+                      answer.isCorrect ? 'border-success bg-success-light' : 'border-danger bg-danger-light'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h5 className="font-semibold">Question {answer.questionIndex + 1}</h5>
+                      <span className={`badge ${answer.isCorrect ? 'badge-success' : 'badge-danger'}`}>
+                        {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="font-medium">{answer.questionText}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {answer.options.map((option, optionIndex) => {
+                        const isCorrectOption = optionIndex === answer.correctAnswerIndex;
+                        const isStudentAnswer = optionIndex === answer.studentAnswerIndex;
+                        
+                        return (
+                          <div 
+                            key={optionIndex}
+                            className={`p-2 rounded border text-sm ${
+                              isCorrectOption ? 'border-success bg-success-light text-success-dark' :
+                              isStudentAnswer && !isCorrectOption ? 'border-danger bg-danger-light text-danger-dark' :
+                              'border-border bg-panel'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono">
+                                {String.fromCharCode(65 + optionIndex)}.
+                              </span>
+                              <span className="flex-1">{option}</span>
+                              <div className="flex gap-1">
+                                {isCorrectOption && (
+                                  <span className="text-success font-semibold" title="Correct Answer">✓</span>
+                                )}
+                                {isStudentAnswer && (
+                                  <span 
+                                    className={isCorrectOption ? 'text-success' : 'text-danger'} 
+                                    title="Your Answer"
+                                  >
+                                    👤
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {answer.studentAnswerIndex === null && (
+                        <div className="p-2 border border-warning bg-warning-light text-warning-dark rounded text-sm">
+                          <span className="font-semibold">Not Answered</span> - You did not select any option for this question.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 text-sm">
+                      <div className="font-semibold text-success">
+                        Correct Answer: {String.fromCharCode(65 + answer.correctAnswerIndex)}. {answer.correctAnswerText}
+                      </div>
+                      {answer.studentAnswerText && (
+                        <div className={`font-semibold ${answer.isCorrect ? 'text-success' : 'text-danger'}`}>
+                          Your Answer: {String.fromCharCode(65 + answer.studentAnswerIndex)}. {answer.studentAnswerText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowDetailedResult(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
         </Modal>
       </div>
     );
@@ -534,8 +698,8 @@ export default function StudentDashboard(){
                   <div>
                     <h4 className="font-semibold mb-1">{reg.exam?.title}</h4>
                     <div className="flex items-center gap-4 text-sm text-muted">
-                      <span>📅 {startTime.toLocaleDateString()}</span>
-                      <span>⏰ {startTime.toLocaleTimeString()} - {endTime.toLocaleTimeString()}</span>
+                      <span>📅 {dayjs(startTime).format('MMM DD, YYYY')}</span>
+                      <span>⏰ {dayjs(startTime).format('HH:mm')} - {dayjs(endTime).format('HH:mm')}</span>
                       <span className={`badge ${isActive ? 'badge-success' : isUpcoming ? 'badge-warning' : 'badge-default'}`}>
                         {isActive ? 'Active Now' : isUpcoming ? 'Upcoming' : 'Ended'}
                       </span>
@@ -580,18 +744,59 @@ export default function StudentDashboard(){
               const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : 'F';
               const badgeVariant = percentage >= 70 ? 'badge-success' : percentage >= 60 ? 'badge-warning' : 'badge-danger';
               
+              if (result.resultsHidden) {
+                return (
+                  <div key={result._id || result.id} className="flex items-center justify-between p-4 border border-warning bg-warning-light rounded-lg">
+                    <div className="flex-1">
+                      <h4 className="font-semibold mb-1">{result.exam?.title || 'Exam'}</h4>
+                      <div className="flex items-center gap-4 text-sm text-warning-dark">
+                        <span>📅 {dayjs(result.submittedAt).format('MMM DD, YYYY HH:mm')}</span>
+                        <span className="badge badge-warning">Results Hidden</span>
+                      </div>
+                      <div className="text-sm text-warning-dark mt-2">
+                        <div className="font-medium">📋 {result.hideReason}</div>
+                        {result.resultsReleaseMessage && (
+                          <div className="mt-1 italic">{result.resultsReleaseMessage}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="text-center text-warning">
+                      <div className="text-2xl mb-2">⏳</div>
+                      <div className="text-sm font-medium">Results Pending</div>
+                    </div>
+                  </div>
+                );
+              }
+
               return (
                 <div key={result._id || result.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                  <div>
+                  <div className="flex-1">
                     <h4 className="font-semibold mb-1">{result.exam?.title || 'Exam'}</h4>
                     <div className="flex items-center gap-4 text-sm text-muted">
                       <span>📅 {dayjs(result.submittedAt).format('MMM DD, YYYY HH:mm')}</span>
                       <span>Grade: <span className={`badge ${badgeVariant} ml-1`}>{grade}</span></span>
+                      {result.timeTaken && (
+                        <span>⏱️ {Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</span>
+                      )}
                     </div>
+                    {result.resultsReleaseMessage && (
+                      <div className="text-sm text-success mt-2 italic">
+                        💬 {result.resultsReleaseMessage}
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold mb-1">{result.score}/{result.total}</div>
-                    <div className="text-sm text-muted">{percentage}%</div>
+                  <div className="flex items-center gap-4">
+                    <div className="text-right">
+                      <div className="text-xl font-bold mb-1">{result.score}/{result.total}</div>
+                      <div className="text-sm text-muted">{percentage}%</div>
+                    </div>
+                    <Button 
+                      variant="secondary"
+                      size="small"
+                      onClick={() => viewDetailedResult(result._id)}
+                    >
+                      View Details
+                    </Button>
                   </div>
                 </div>
               );

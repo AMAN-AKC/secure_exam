@@ -39,6 +39,15 @@ const ExamSchema = new mongoose.Schema(
     shuffleQuestions: { type: Boolean, default: false }, // Randomize question order
     showResults: { type: Boolean, default: true }, // Show results to students after completion
     
+    // Result release settings
+    resultsReleaseType: { 
+      type: String, 
+      enum: ['immediate', 'after_exam_ends', 'custom_date'], 
+      default: 'after_exam_ends' 
+    },
+    resultsReleaseDate: { type: Date }, // Custom date/time when results become visible
+    resultsReleaseMessage: { type: String, default: '' }, // Optional message to show with results
+    
     questions: { type: [QuestionSchema], default: [] },
     chunks: { type: [ChunkSchema], default: [] },
   },

@@ -95,25 +95,6 @@ export default function Login(){
               </p>
             </div>
           </Card>
-
-          {/* Demo Accounts Info */}
-          <Card variant="bordered" padding="normal" className="mt-6">
-            <h4 className="font-semibold mb-3">Demo Accounts</h4>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-muted">Admin:</span>
-                <span>Check server console</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Teacher:</span>
-                <span>Register as teacher</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-muted">Student:</span>
-                <span>Register as student</span>
-              </div>
-            </div>
-          </Card>
         </div>
       </div>
     </div>

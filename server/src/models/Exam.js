@@ -25,7 +25,7 @@ const ExamSchema = new mongoose.Schema(
     title: { type: String, required: true },
     description: { type: String, default: '' },
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected'], default: 'draft' },
+    status: { type: String, enum: ['draft', 'pending', 'approved', 'rejected', 'expired'], default: 'draft' },
     
     // Exam timing settings (set by teacher)
     durationMinutes: { type: Number, default: 60 }, // How long students have to complete exam

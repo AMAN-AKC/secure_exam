@@ -102,7 +102,7 @@ export default function StudentDashboard(){
       // Show registration success with timing details
       const message = data.message || 'Registration successful. Check your schedule.';
       if (data.startTime && data.endTime) {
-        const startTime = dayjs(data.startTime).format('MMM DD, YYYY at HH:mm');
+        const startTime = dayjs(data.startTime).format('MMM DD, YYYY [at] HH:mm');
         const endTime = dayjs(data.endTime).format('HH:mm');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
@@ -552,7 +552,7 @@ export default function StudentDashboard(){
       {/* Header */}
       <Card
         title="Student Dashboard"
-        subtitle={`Welcome back, ${user?.name || user?.email}`}
+        subtitle={`Welcome back, ${user?.name || user?.email} (${user?.role?.toUpperCase()})`}
         variant="gradient" 
         headerAction={
           <Button variant="secondary" onClick={logout}>
@@ -620,7 +620,7 @@ export default function StudentDashboard(){
                       <div className="mt-2 p-3 bg-panel-light rounded-lg">
                         <div className="text-sm font-medium text-warning mb-1">⏰ Scheduled Exam</div>
                         <div className="text-sm text-muted">
-                          {dayjs(exam.examStartTime).format('MMM DD, YYYY at HH:mm')} - {dayjs(exam.examEndTime).format('HH:mm')}
+                          {dayjs(exam.examStartTime).format('MMM DD, YYYY [at] HH:mm')} - {dayjs(exam.examEndTime).format('HH:mm')}
                           {!exam.allowLateEntry && <span className="text-warning ml-2">(No late entry)</span>}
                         </div>
                       </div>
@@ -685,7 +685,9 @@ export default function StudentDashboard(){
           </div>
         ) : (
           <div className="space-y-3">
-            {regs.map(reg => {
+            {regs
+              .sort((a, b) => new Date(b.startTime) - new Date(a.startTime)) // Most recent first
+              .map(reg => {
               const result = resultsByExamId.get(reg.exam?._id || reg.exam);
               const now = new Date();
               const startTime = new Date(reg.startTime);

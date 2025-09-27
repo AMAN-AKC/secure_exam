@@ -140,27 +140,6 @@ export default function Register(){
               </p>
             </div>
           </Card>
-
-          {/* Role Information */}
-          <Card variant="default" padding="normal" className="mt-6">
-            <h4 className="font-semibold mb-3">Account Types</h4>
-            <div className="space-y-3 text-sm">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-brand">👨‍🎓</span>
-                  <span className="font-medium">Student Account</span>
-                </div>
-                <p className="text-muted ml-6">Register for exams, take tests, and view your results</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <span className="text-success">👨‍🏫</span>
-                  <span className="font-medium">Teacher Account</span>
-                </div>
-                <p className="text-muted ml-6">Create exams, manage questions, and track student performance</p>
-              </div>
-            </div>
-          </Card>
         </div>
       </div>
     </div>

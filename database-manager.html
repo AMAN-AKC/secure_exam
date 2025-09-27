@@ -99,9 +99,12 @@
       </div>
 
       <div class="section">
-        <h3>🔧 Fix Issues</h3>
-        <button class="view-btn" onclick="fixPendingExams()">
-          ✅ Approve Pending Exams
+        <h3>✅ Approve Exams</h3>
+        <button class="view-btn" onclick="viewPendingExams()">
+          📋 View Pending Exams
+        </button>
+        <button class="view-btn" onclick="approveAllPendingExams()">
+          ✅ Approve All Eligible
         </button>
       </div>
 
@@ -207,18 +210,202 @@
         }
       }
 
-      async function fixPendingExams() {
+      async function viewPendingExams() {
         const output = document.getElementById("output");
-        output.textContent = "Fixing pending exams...";
+        output.textContent = "Loading pending exams...";
 
         try {
-          const response = await fetch(`${API_BASE}/fix-pending-exams`, {
-            method: "POST",
-          });
+          const response = await fetch(`${API_BASE}/pending-exams`);
           const data = await response.json();
-          output.textContent = `✅ Fixed!\n\n${JSON.stringify(data, null, 2)}`;
+
+          if (data.length === 0) {
+            output.textContent = "✅ No pending exams to approve.";
+            return;
+          }
+
+          let outputText = `📋 PENDING EXAMS (${data.length} total)\n\n`;
+
+          data.forEach((exam, index) => {
+            const status = exam.isExpired ? "❌ EXPIRED" : "⏳ PENDING";
+
+            outputText += `${index + 1}. ${exam.title}\n`;
+            outputText += `   Status: ${status}\n`;
+            outputText += `   Teacher: ${exam.createdBy.name} (${exam.createdBy.email})\n`;
+            outputText += `   Created: ${new Date(
+              exam.createdAt
+            ).toLocaleString("en-GB", { hour12: false })}\n`;
+
+            if (exam.availableFrom) {
+              outputText += `   Registration: ${new Date(
+                exam.availableFrom
+              ).toLocaleString("en-GB", { hour12: false })}`;
+              if (exam.availableTo) {
+                outputText += ` - ${new Date(exam.availableTo).toLocaleString(
+                  "en-GB",
+                  { hour12: false }
+                )}`;
+              }
+              outputText += "\n";
+            }
+
+            if (exam.examStartTime) {
+              outputText += `   Exam Time: ${new Date(
+                exam.examStartTime
+              ).toLocaleString("en-GB", { hour12: false })} - ${new Date(
+                exam.examEndTime
+              ).toLocaleString("en-GB", { hour12: false })}\n`;
+            }
+
+            if (exam.expiryReason) {
+              outputText += `   ⚠️ Cannot Approve: ${exam.expiryReason}\n`;
+            }
+
+            outputText += `   Questions: ${exam.questions?.length || 0}\n`;
+            outputText += `   Duration: ${exam.durationMinutes} minutes\n\n`;
+          });
+
+          output.innerHTML = `<pre>${outputText}</pre>`;
+
+          // Add individual approve buttons
+          const approveSection = document.createElement("div");
+          approveSection.innerHTML = "<h4>Individual Actions:</h4>";
+
+          data.forEach((exam) => {
+            if (!exam.isExpired) {
+              const button = document.createElement("button");
+              button.textContent = `✅ Approve "${exam.title}"`;
+              button.className = "view-btn";
+              button.style.margin = "5px";
+              button.onclick = () => approveExam(exam._id, exam.title);
+              approveSection.appendChild(button);
+            } else {
+              const button = document.createElement("button");
+              button.textContent = `❌ Mark "${exam.title}" as Expired`;
+              button.className = "danger-btn";
+              button.style.margin = "5px";
+              button.onclick = () => expireExam(exam._id, exam.title);
+              approveSection.appendChild(button);
+            }
+          });
+
+          output.appendChild(approveSection);
         } catch (error) {
           output.textContent = `❌ Error: ${error.message}`;
+        }
+      }
+
+      async function approveExam(examId, title) {
+        if (!confirm(`Approve exam "${title}"?`)) return;
+
+        const output = document.getElementById("output");
+        output.textContent = `Approving exam "${title}"...`;
+
+        try {
+          const response = await fetch(`${API_BASE}/exam-status/${examId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "approved" }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            output.textContent = `✅ Successfully approved "${title}"!\n\nStudents can now register for this exam.`;
+          } else {
+            output.textContent = `❌ Failed to approve: ${
+              data.error
+            }\nReason: ${data.reason || "Unknown"}`;
+          }
+        } catch (error) {
+          output.textContent = `❌ Error approving exam: ${error.message}`;
+        }
+      }
+
+      async function expireExam(examId, title) {
+        if (!confirm(`Mark exam "${title}" as expired? This cannot be undone.`))
+          return;
+
+        const output = document.getElementById("output");
+        output.textContent = `Marking exam "${title}" as expired...`;
+
+        try {
+          const response = await fetch(`${API_BASE}/exam-status/${examId}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ status: "expired" }),
+          });
+
+          const data = await response.json();
+
+          if (response.ok) {
+            output.textContent = `✅ Successfully marked "${title}" as expired.`;
+          } else {
+            output.textContent = `❌ Failed to expire exam: ${data.error}`;
+          }
+        } catch (error) {
+          output.textContent = `❌ Error: ${error.message}`;
+        }
+      }
+
+      async function approveAllPendingExams() {
+        if (
+          !confirm(
+            "Approve ALL eligible pending exams? Expired exams will be marked as expired."
+          )
+        )
+          return;
+
+        const output = document.getElementById("output");
+        output.textContent = "Processing all pending exams...";
+
+        try {
+          // Get pending exams first
+          const response = await fetch(`${API_BASE}/pending-exams`);
+          const exams = await response.json();
+
+          if (exams.length === 0) {
+            output.textContent = "✅ No pending exams to process.";
+            return;
+          }
+
+          let results = [];
+
+          for (const exam of exams) {
+            try {
+              const statusResponse = await fetch(
+                `${API_BASE}/exam-status/${exam._id}`,
+                {
+                  method: "PATCH",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    status: exam.isExpired ? "expired" : "approved",
+                  }),
+                }
+              );
+
+              const statusData = await statusResponse.json();
+
+              if (statusResponse.ok) {
+                results.push(
+                  `✅ ${exam.isExpired ? "Expired" : "Approved"}: "${
+                    exam.title
+                  }"`
+                );
+              } else {
+                results.push(
+                  `❌ Failed: "${exam.title}" - ${statusData.error}`
+                );
+              }
+            } catch (err) {
+              results.push(`❌ Error: "${exam.title}" - ${err.message}`);
+            }
+          }
+
+          output.textContent = `📋 BATCH PROCESSING COMPLETE\n\n${results.join(
+            "\n"
+          )}\n\n🔄 Refresh "View Pending Exams" to see updated status.`;
+        } catch (error) {
+          output.textContent = `❌ Error processing exams: ${error.message}`;
         }
       }
 

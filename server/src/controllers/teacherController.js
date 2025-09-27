@@ -92,7 +92,7 @@ export const finalizeExam = async (req, res) => {
     });
 
     exam.chunks = chunks;
-    exam.status = 'approved'; // Auto-approve finalized exams
+    exam.status = 'pending'; // Send to admin for approval
     await exam.save();
 
     res.json({ examId: exam._id, chunks: chunks.map(c => ({ index: c.index, hash: c.hash, prevHash: c.prevHash })) });

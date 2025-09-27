@@ -12,13 +12,13 @@ export default function AdminDashboard(){
     <div className="container stack">
       <div className="card">
         <h2 className="section-title">Admin Dashboard</h2>
-        <div className="muted">Logged in as {user?.name || user?.email} ({user?.email}) <button className="btn secondary" onClick={logout} style={{ marginLeft:8 }}>Logout</button></div>
+        <div className="muted">Welcome back, {user?.name || user?.email} ({user?.role?.toUpperCase()}) <button className="btn secondary" onClick={logout} style={{ marginLeft:8 }}>Logout</button></div>
       </div>
       <div className="card">
         <ul className="list">
           {exams.map(e=> (
             <li key={e._id}>
-              <span><b>{e.title}</b> — <span className="tag">{e.status}</span> — by {e.createdBy?.email}</span>
+              <span><b>{e.title}</b> ï¿½ <span className="tag">{e.status}</span> ï¿½ by {e.createdBy?.email}</span>
               <span className="actions">
                 <button className="btn success" onClick={()=>setStatus(e._id,'approved')}>Approve</button>
                 <button className="btn danger" onClick={()=>setStatus(e._id,'rejected')}>Reject</button>

@@ -174,7 +174,7 @@ export default function TeacherDashboard(){
       setExam(null); 
       setShowQuestionModal(false);
       await load(); 
-      alert('Exam finalized successfully!');
+      alert('Exam finalized and sent to admin for approval!\n\nYour exam is now pending admin approval. Once approved, students will be able to register.');
     } catch (error) {
       alert('Failed to finalize exam');
     }
@@ -217,7 +217,7 @@ export default function TeacherDashboard(){
       {/* Header */}
       <Card
         title="Teacher Dashboard"
-        subtitle={`Welcome back, ${user?.name || user?.email}`}
+        subtitle={`Welcome back, ${user?.name || user?.email} (${user?.role?.toUpperCase()})`}
         variant="gradient"
         headerAction={
           <Button variant="secondary" onClick={logout}>
@@ -236,6 +236,10 @@ export default function TeacherDashboard(){
           <div className="progress-stat">
             <div className="progress-stat-number">{exams.filter(e => e.status === 'draft').length}</div>
             <div className="progress-stat-label">Drafts</div>
+          </div>
+          <div className="progress-stat">
+            <div className="progress-stat-number">{exams.filter(e => e.status === 'pending').length}</div>
+            <div className="progress-stat-label">Pending Approval</div>
           </div>
           <div className="progress-stat">
             <div className="progress-stat-number">{exams.filter(e => e.status === 'approved').length}</div>
@@ -291,7 +295,8 @@ export default function TeacherDashboard(){
                 draft: 'badge-warning',
                 pending: 'badge-primary', 
                 approved: 'badge-success',
-                rejected: 'badge-danger'
+                rejected: 'badge-danger',
+                expired: 'badge-secondary'
               };
               
               return (

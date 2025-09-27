@@ -189,7 +189,7 @@ export default function StudentDashboard(){
         timeTaken 
       });
       
-      alert(`Exam submitted successfully!\nYour Score: ${data.score}/${data.total} (${data.percentage}%)`);
+      alert('Exam submitted successfully!\n\nYour results will be available based on the teacher\'s release settings. Check "My Results" to view them when available.');
       setActiveExam(null);
       setShowConfirmModal(false);
       setExamStartTime(null);

@@ -1,8 +1,12 @@
 ﻿import { Router } from 'express';
-import { login, register } from '../controllers/authController.js';
+import { login, register, googleLogin, sendPhoneVerification, verifyPhoneCode, resendVerificationCode } from '../controllers/authController.js';
 
 const router = Router();
 router.post('/register', register); // for student/teacher
 router.post('/login', login);
+router.post('/google-login', googleLogin);
+router.post('/phone/send-code', sendPhoneVerification);
+router.post('/phone/verify-code', verifyPhoneCode);
+router.post('/phone/resend-code', resendVerificationCode);
 
 export default router;

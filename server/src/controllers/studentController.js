@@ -6,6 +6,11 @@ import { aesDecrypt } from '../utils/crypto.js';
 
 export const listApprovedExams = async (req, res) => {
   try {
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     console.log('Student listApprovedExams called by user:', req.user);
     const now = new Date();
     
@@ -46,7 +51,7 @@ export const listApprovedExams = async (req, res) => {
     }));
     
     console.log('Returning exam data:', examData);
-    res.json(examData);
+    res.status(200).json(examData);
   } catch (error) {
     console.error('Error in listApprovedExams:', error);
     res.status(500).json({ error: 'Failed to fetch exams', details: error.message });
@@ -146,8 +151,13 @@ export const registerForExam = async (req, res) => {
 };
 
 export const getScheduledExams = async (req, res) => {
+  // Disable caching for this endpoint
+  res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
+  
   const regs = await Registration.find({ student: req.user.id }).populate('exam', 'title status');
-  res.json(regs);
+  res.status(200).json(regs);
 };
 
 export const accessExam = async (req, res) => {
@@ -313,6 +323,11 @@ export const submitExam = async (req, res) => {
 
 export const myResults = async (req, res) => {
   try {
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
+    
     const results = await Result.find({ student: req.user.id })
       .populate('exam', 'title description durationMinutes showResults resultsReleaseType resultsReleaseDate resultsReleaseMessage examEndTime')
       .sort({ submittedAt: -1 })
@@ -393,7 +408,7 @@ export const myResults = async (req, res) => {
       }
     });
     
-    res.json(visibleResults);
+    res.status(200).json(visibleResults);
   } catch (error) {
     console.error('Error fetching results:', error);
     res.status(500).json({ error: 'Failed to fetch results' });
@@ -403,6 +418,11 @@ export const myResults = async (req, res) => {
 export const getDetailedResult = async (req, res) => {
   try {
     const { resultId } = req.params;
+    
+    // Disable caching for this endpoint
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.set('Pragma', 'no-cache');
+    res.set('Expires', '0');
     
     const result = await Result.findOne({ 
       _id: resultId, 
@@ -478,7 +498,7 @@ export const getDetailedResult = async (req, res) => {
       });
     }
     
-    res.json(result);
+    res.status(200).json(result);
   } catch (error) {
     console.error('Error fetching detailed result:', error);
     res.status(500).json({ error: 'Failed to fetch detailed result' });

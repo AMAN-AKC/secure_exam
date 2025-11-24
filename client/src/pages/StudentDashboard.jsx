@@ -207,10 +207,24 @@ export default function StudentDashboard(){
 
   const viewDetailedResult = async (resultId) => {
     try {
+      console.log('=== VIEW DETAILED RESULT ===');
+      console.log('Fetching detailed result for:', resultId);
+      setShowDetailedResult(null); // Reset state first
       const { data } = await api.get(`/student/results/${resultId}/details`);
+      console.log('API Response received:', data);
+      console.log('Data keys:', Object.keys(data));
+      console.log('Exam data:', data.exam);
+      console.log('Answers count:', data.answers?.length);
+      console.log('Setting showDetailedResult state...');
       setShowDetailedResult(data);
+      console.log('State should be set now');
     } catch (error) {
-      alert(error?.response?.data?.message || 'Failed to load detailed results');
+      console.error('=== ERROR FETCHING RESULT ===');
+      console.error('Error object:', error);
+      console.error('Error response:', error?.response?.data);
+      console.error('Error status:', error?.response?.status);
+      console.error('Error message:', error?.message);
+      alert(`Failed to load detailed results: ${error?.response?.data?.message || error?.response?.data?.error || error?.message}`);
     }
   };
 
@@ -522,6 +536,155 @@ export default function StudentDashboard(){
             </div>
           )}
         </Modal>
+      </div>
+    );
+  }
+
+  // Render detailed result modal outside of exam view
+  if (showDetailedResult && !activeExam) {
+    return (
+      <div>
+        <Modal
+          isOpen={!!showDetailedResult}
+          onClose={() => setShowDetailedResult(null)}
+          title="Detailed Exam Results"
+          size="large"
+        >
+          {showDetailedResult && (
+            <div className="space-y-6">
+              {/* Result Summary */}
+              <div className="bg-panel-light rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-2">{showDetailedResult.exam?.title}</h3>
+                    <div className="text-sm text-muted space-y-1">
+                      <div>📅 Submitted: {dayjs(showDetailedResult.submittedAt).format('MMM DD, YYYY HH:mm')}</div>
+                      {showDetailedResult.timeTaken && (
+                        <div>⏱️ Time Taken: {Math.floor(showDetailedResult.timeTaken / 60)}m {showDetailedResult.timeTaken % 60}s</div>
+                      )}
+                      {showDetailedResult.examDuration && (
+                        <div>📋 Allocated Time: {showDetailedResult.examDuration} minutes</div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-3xl font-bold mb-2">
+                      {showDetailedResult.score}/{showDetailedResult.total}
+                    </div>
+                    <div className={`text-lg font-semibold ${
+                      showDetailedResult.percentage >= 70 ? 'text-success' : 
+                      showDetailedResult.percentage >= 60 ? 'text-warning' : 'text-danger'
+                    }`}>
+                      {showDetailedResult.percentage}%
+                    </div>
+                    <div className={`badge ${
+                      showDetailedResult.percentage >= 90 ? 'badge-success' : 
+                      showDetailedResult.percentage >= 80 ? 'badge-success' : 
+                      showDetailedResult.percentage >= 70 ? 'badge-warning' : 
+                      showDetailedResult.percentage >= 60 ? 'badge-warning' : 'badge-danger'
+                    }`}>
+                      Grade: {showDetailedResult.percentage >= 90 ? 'A' : 
+                              showDetailedResult.percentage >= 80 ? 'B' : 
+                              showDetailedResult.percentage >= 70 ? 'C' : 
+                              showDetailedResult.percentage >= 60 ? 'D' : 'F'}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Questions and Answers */}
+              <div className="space-y-4 max-h-96 overflow-y-auto">
+                <h4 className="font-semibold mb-3">Question-wise Analysis</h4>
+                {showDetailedResult.answers?.map((answer, index) => (
+                  <div 
+                    key={index} 
+                    className={`border rounded-lg p-4 ${
+                      answer.isCorrect ? 'border-success bg-success-light' : 'border-danger bg-danger-light'
+                    }`}
+                  >
+                    <div className="flex items-start justify-between mb-3">
+                      <h5 className="font-semibold">Question {answer.questionIndex + 1}</h5>
+                      <span className={`badge ${answer.isCorrect ? 'badge-success' : 'badge-danger'}`}>
+                        {answer.isCorrect ? '✓ Correct' : '✗ Wrong'}
+                      </span>
+                    </div>
+                    
+                    <div className="mb-3">
+                      <p className="font-medium">{answer.questionText}</p>
+                    </div>
+
+                    <div className="space-y-2">
+                      {answer.options.map((option, optionIndex) => {
+                        const isCorrectOption = optionIndex === answer.correctAnswerIndex;
+                        const isStudentAnswer = optionIndex === answer.studentAnswerIndex;
+                        
+                        return (
+                          <div 
+                            key={optionIndex}
+                            className={`p-2 rounded border text-sm ${
+                              isCorrectOption ? 'border-success bg-success-light text-success-dark' :
+                              isStudentAnswer && !isCorrectOption ? 'border-danger bg-danger-light text-danger-dark' :
+                              'border-border bg-panel'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="font-mono">
+                                {String.fromCharCode(65 + optionIndex)}.
+                              </span>
+                              <span className="flex-1">{option}</span>
+                              <div className="flex gap-1">
+                                {isCorrectOption && (
+                                  <span className="text-success font-semibold" title="Correct Answer">✓</span>
+                                )}
+                                {isStudentAnswer && (
+                                  <span 
+                                    className={isCorrectOption ? 'text-success' : 'text-danger'} 
+                                    title="Your Answer"
+                                  >
+                                    👤
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      
+                      {answer.studentAnswerIndex === null && (
+                        <div className="p-2 border border-warning bg-warning-light text-warning-dark rounded text-sm">
+                          <span className="font-semibold">Not Answered</span> - You did not select any option for this question.
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="mt-3 text-sm">
+                      <div className="font-semibold text-success">
+                        Correct Answer: {String.fromCharCode(65 + answer.correctAnswerIndex)}. {answer.correctAnswerText}
+                      </div>
+                      {answer.studentAnswerText && (
+                        <div className={`font-semibold ${answer.isCorrect ? 'text-success' : 'text-danger'}`}>
+                          Your Answer: {String.fromCharCode(65 + answer.studentAnswerIndex)}. {answer.studentAnswerText}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex justify-end">
+                <Button onClick={() => setShowDetailedResult(null)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+          )}
+        </Modal>
+        {/* Navigate back to dashboard when closing modal */}
+        <div className="container stack">
+          <Card title="Back to Results">
+            <p>Click close on the modal above to return to your results.</p>
+          </Card>
+        </div>
       </div>
     );
   }

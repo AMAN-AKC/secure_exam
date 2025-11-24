@@ -25,7 +25,7 @@ export default function Login(){
   // Google Login Handler
   const handleGoogleLogin = useCallback(async (response) => {
     try {
-      console.log('Google response:', response);
+      console.log('Google response received');
       setLoading(true);
       setError('');
       
@@ -34,10 +34,26 @@ export default function Login(){
       });
 
       console.log('Google login successful:', data);
+      console.log('User data:', data.user);
+      console.log('User role:', data.user.role);
+      console.log('User ID:', data.user._id);
+      
+      // Set user data in context AND localStorage
+      console.log('Calling setUserData...');
       setUserData(data.user, data.token);
+      console.log('setUserData completed');
+      
+      // Determine navigation path BEFORE navigating
       const path = data.user.role === 'admin' ? '/admin' : data.user.role === 'teacher' ? '/teacher' : '/student';
-      console.log('Navigating to:', path);
-      navigate(path, { replace: true });
+      console.log('Will navigate to:', path);
+      
+      // Use setTimeout to ensure state has updated before navigation
+      // (React batches updates, but localStorage is set immediately)
+      setTimeout(() => {
+        console.log('Navigating to:', path);
+        navigate(path, { replace: true });
+      }, 0);
+      
     } catch (err) {
       console.error('Google login error:', err);
       const errorMsg = err?.response?.data?.error || 'Google login failed';
@@ -77,27 +93,7 @@ export default function Login(){
           callback: callbackRef.current
         });
         console.log('Google initialized successfully');
-        
-        setTimeout(() => {
-          const element = document.getElementById('google-login-btn');
-          console.log('Element found:', !!element);
-          
-          if (element) {
-            window.google.accounts.id.renderButton(
-              element,
-              { 
-                theme: 'filled_black', 
-                size: 'large', 
-                width: '100%',
-                logo_alignment: 'center'
-              }
-            );
-            console.log('Button rendered successfully');
-            setGoogleLoaded(true);
-          } else {
-            console.error('Element with id "google-login-btn" not found');
-          }
-        }, 0);
+        setGoogleLoaded(true);
       } catch (error) {
         console.error('Error initializing Google:', error);
       }
@@ -128,30 +124,26 @@ export default function Login(){
     document.body.appendChild(script);
   }, []);
 
-  // Re-render Google button when Google tab is clicked
+  // Re-render Google button when Google tab is clicked or when Google loads
   useEffect(() => {
-    if (authMethod === 'google' && window.google && callbackRef.current) {
-      console.log('Google tab activated, re-rendering button...');
-      setTimeout(() => {
-        const element = document.getElementById('google-login-btn');
-        if (element) {
-          console.log('Rendering button to element');
-          window.google.accounts.id.renderButton(
-            element,
-            { 
-              theme: 'filled_black', 
-              size: 'large', 
-              width: '100%',
-              logo_alignment: 'center'
-            }
-          );
-          setGoogleLoaded(true);
-        } else {
-          console.error('google-login-btn element not found when re-rendering');
-        }
-      }, 50);
+    if (authMethod === 'google' && googleLoaded && window.google && callbackRef.current) {
+      console.log('Google tab activated, rendering button...');
+      const element = document.getElementById('google-login-btn');
+      if (element && element.children.length === 0) {
+        // Only render if element is empty (not already rendered)
+        console.log('Rendering button to element');
+        window.google.accounts.id.renderButton(
+          element,
+          { 
+            theme: 'filled_black', 
+            size: 'large',
+            width: '100%',
+            logo_alignment: 'center'
+          }
+        );
+      }
     }
-  }, [authMethod]);
+  }, [authMethod, googleLoaded]);
 
   // Password Login
   const onSubmit = async (e) => { 
@@ -173,39 +165,49 @@ export default function Login(){
   return (
     <div className="container">
       <div className="flex justify-center">
-        <div style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{ width: '100%', maxWidth: '420px' }}>
           {/* Hero Section */}
           <div className="text-center mb-8">
-            <div className="mb-4 text-4xl">🔒</div>
-            <h1 className="text-2xl font-bold mb-2">Secure Exam System</h1>
-            <p className="text-muted">Sign in to access your examinations</p>
+            <div className="mb-4 text-6xl" style={{ 
+              background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>🔒</div>
+            <h1 className="text-3xl font-bold mb-2" style={{
+              background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text'
+            }}>Secure Exam System</h1>
+            <p className="text-muted text-sm">Sign in to access your examinations</p>
           </div>
 
           <Card variant="elevated" padding="large">
             <div className="mb-6">
-              <h2 className="text-xl font-semibold text-center">Welcome Back</h2>
+              <h2 className="text-xl font-semibold text-center mb-4">Welcome Back</h2>
               
-              {/* Auth Method Tabs */}
-              <div className="flex gap-2 mt-4 border-b border-border">
+              {/* Auth Method Tabs - Enhanced */}
+              <div className="flex gap-3 mb-6 p-1 bg-panel-light rounded-lg">
                 <button
                   onClick={() => setAuthMethod('password')}
-                  className={`flex-1 pb-2 text-sm font-medium transition ${
+                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition duration-300 ${
                     authMethod === 'password'
-                      ? 'border-b-2 border-brand text-brand'
-                      : 'text-muted hover:text-text'
+                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                      : 'text-muted hover:text-text hover:bg-panel/50'
                   }`}
                 >
-                  Password
+                  🔐 Password
                 </button>
                 <button
                   onClick={() => setAuthMethod('google')}
-                  className={`flex-1 pb-2 text-sm font-medium transition ${
+                  className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition duration-300 ${
                     authMethod === 'google'
-                      ? 'border-b-2 border-brand text-brand'
-                      : 'text-muted hover:text-text'
+                      ? 'bg-gradient-to-r from-orange-400 to-red-500 text-white shadow-lg shadow-red-500/30'
+                      : 'text-muted hover:text-text hover:bg-panel/50'
                   }`}
                 >
-                  Google
+                  🌐 Google
                 </button>
               </div>
             </div>
@@ -248,9 +250,15 @@ export default function Login(){
                   variant="primary" 
                   size="large"
                   loading={loading}
-                  style={{ width: '100%' }}
+                  style={{ 
+                    width: '100%',
+                    background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+                    fontWeight: '600',
+                    letterSpacing: '0.5px',
+                    fontSize: '1rem'
+                  }}
                 >
-                  Sign In
+                  🔓 Sign In Securely
                 </Button>
               </form>
             )}
@@ -258,14 +266,22 @@ export default function Login(){
             {/* Google Login */}
             {authMethod === 'google' && (
               <div className="space-y-4">
-                <p className="text-sm text-muted text-center mb-4">
-                  Sign in with your Google account for quick and secure access.
+                <p className="text-sm text-muted text-center mb-6">
+                  🚀 Sign in with your Google account for quick and secure access
                 </p>
-                <div style={{ display: 'flex', justifyContent: 'center', minHeight: '40px' }}>
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  minHeight: '50px',
+                  padding: '1rem',
+                  borderRadius: '0.75rem',
+                  background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.05) 0%, rgba(255, 87, 34, 0.05) 100%)',
+                  border: '2px solid rgba(255, 152, 0, 0.2)'
+                }}>
                   <div id="google-login-btn"></div>
                 </div>
                 {!googleLoaded && (
-                  <p className="text-muted text-sm text-center">Loading Google Sign-In...</p>
+                  <p className="text-muted text-sm text-center animate-pulse">⏳ Loading Google Sign-In...</p>
                 )}
               </div>
             )}

@@ -24,7 +24,17 @@ const PORT = process.env.PORT || 4000;
 connectDb()
   .then(async () => {
     await seedAdminIfNeeded();
-    await seedSampleData();
+    
+    // Only seed sample data if explicitly enabled via environment variable
+    if (process.env.SEED_SAMPLE_DATA === 'true') {
+      await seedSampleData();
+    } else {
+      const existingExams = await (await import('./models/Exam.js')).Exam.countDocuments();
+      if (existingExams === 0) {
+        console.log('No exams found in database. Set SEED_SAMPLE_DATA=true to add sample exams.');
+      }
+    }
+    
     app.listen(PORT, () => {
       console.log(`API listening on port ${PORT}`);
     });

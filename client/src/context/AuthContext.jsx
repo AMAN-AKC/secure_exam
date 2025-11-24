@@ -58,12 +58,17 @@ export function AuthProvider({ children }) {
   };
 
   const setUserData = (userData, token) => {
+    console.log('setUserData called with:', { userData: userData?._id, hasToken: !!token });
+    
+    // Set both localStorage AND state immediately
     if (token) {
       localStorage.setItem('token', token);
+      console.log('Token saved to localStorage');
     }
     if (userData) {
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      console.log('User saved to localStorage and state:', userData._id);
     }
   };
 

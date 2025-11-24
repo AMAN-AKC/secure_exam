@@ -47,25 +47,31 @@ export default function StudentDashboard(){
       
       // Load each endpoint separately to identify which one fails
       console.log('Loading exams...');
-      const ex = await api.get('/student/exams');
-      console.log('Exams loaded successfully:', ex.data);
+      const exResponse = await api.get('/student/exams');
+      const exams = exResponse.data || [];
+      console.log('Exams loaded successfully:', exams);
+      console.log('Number of exams:', exams.length);
       
       console.log('Loading registrations...');
-      const rg = await api.get('/student/registrations');
-      console.log('Registrations loaded successfully:', rg.data);
+      const regResponse = await api.get('/student/registrations');
+      const registrations = regResponse.data || [];
+      console.log('Registrations loaded successfully:', registrations);
+      console.log('Number of registrations:', registrations.length);
       
       console.log('Loading results...');
-      const rs = await api.get('/student/results');
-      console.log('Results loaded successfully:', rs.data);
+      const resultResponse = await api.get('/student/results');
+      const myResults = resultResponse.data || [];
+      console.log('Results loaded successfully:', myResults);
+      console.log('Number of results:', myResults.length);
       
-      setApproved(ex.data || []);
-      setRegs(rg.data || []);
-      setResults(rs.data || []);
+      setApproved(exams);
+      setRegs(registrations);
+      setResults(myResults);
       
       console.log('StudentDashboard: All data loaded successfully');
-      console.log('Final state - Approved exams:', ex.data?.length || 0);
-      console.log('Final state - Registrations:', rg.data?.length || 0);
-      console.log('Final state - Results:', rs.data?.length || 0);
+      console.log('Final state - Approved exams:', exams.length);
+      console.log('Final state - Registrations:', registrations.length);
+      console.log('Final state - Results:', myResults.length);
     } catch (error) {
       console.error('StudentDashboard: Error loading data:', error);
       console.error('Error details:', error.response?.data);
@@ -73,6 +79,10 @@ export default function StudentDashboard(){
       console.error('Error config:', error.config?.url);
       console.error('Request headers:', error.config?.headers);
       setError(`Failed to load data: ${error.response?.data?.error || error.message}`);
+      // Still set empty arrays so we can at least see the empty state
+      setApproved([]);
+      setRegs([]);
+      setResults([]);
     } finally {
       setLoading(false);
     }
@@ -84,12 +94,19 @@ export default function StudentDashboard(){
     console.log('User role:', user?.role);
     console.log('Auth token exists:', !!localStorage.getItem('token'));
     
+    // Check if user data persisted properly from Google login
+    const storedUser = localStorage.getItem('user');
+    const storedToken = localStorage.getItem('token');
+    console.log('Stored user in localStorage:', storedUser ? JSON.parse(storedUser) : null);
+    console.log('Stored token exists:', !!storedToken);
+    
     if (user?.role !== 'student') {
       console.warn('Wrong role for StudentDashboard:', user?.role);
       setError(`Access denied: This dashboard is for students only. Your role: ${user?.role}`);
       return;
     }
     
+    console.log('Loading dashboard data for student:', user?._id);
     load(); 
   }, [user]);
 
@@ -712,6 +729,25 @@ export default function StudentDashboard(){
 
   return (
     <div className="container stack">
+      {/* Error Message */}
+      {error && (
+        <div className="bg-danger-light border border-danger rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <span className="text-xl">⚠️</span>
+            <div className="flex-1">
+              <h3 className="font-bold text-danger mb-1">Error Loading Data</h3>
+              <p className="text-sm">{error}</p>
+              <button 
+                className="text-sm text-danger font-semibold mt-2 hover:underline"
+                onClick={load}
+              >
+                Try Again
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <Card
         title="Student Dashboard"

@@ -9,7 +9,7 @@ import router from './routes/index.js';
 dotenv.config();
 const app = express();
 
-// Configure CORS to allow Vercel frontend
+// Configure CORS to allow frontend
 app.use(cors({
   origin: [
     'http://localhost:5173',

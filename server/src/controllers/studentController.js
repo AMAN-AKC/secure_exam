@@ -13,19 +13,44 @@ export const listApprovedExams = async (req, res) => {
     
     console.log('Student listApprovedExams called by user:', req.user);
     const now = new Date();
+    console.log('Current server time (now):', now.toISOString());
+    
+    // First, get ALL approved exams to see what we have
+    const allApprovedExams = await Exam.find({ status: 'approved' })
+      .select('title availableFrom availableTo');
+    console.log('All approved exams in DB:', allApprovedExams.map(e => ({
+      title: e.title,
+      availableFrom: e.availableFrom ? e.availableFrom.toISOString() : 'null',
+      availableTo: e.availableTo ? e.availableTo.toISOString() : 'null'
+    })));
     
     // Find approved exams that are currently available for registration
+    // An exam is available if:
+    // 1. availableFrom is null OR in the past
+    // 2. availableTo is null OR in the future
     const exams = await Exam.find({ 
       status: 'approved',
-      $or: [
-        { availableFrom: { $lte: now }, availableTo: { $gte: now } },
-        { availableFrom: null, availableTo: null }
+      $and: [
+        {
+          $or: [
+            { availableFrom: null },
+            { availableFrom: { $exists: false } },
+            { availableFrom: { $lte: now } }
+          ]
+        },
+        {
+          $or: [
+            { availableTo: null },
+            { availableTo: { $exists: false } },
+            { availableTo: { $gte: now } }
+          ]
+        }
       ]
     })
     .populate('createdBy', 'name email')
     .select('title description createdBy durationMinutes availableFrom availableTo examStartTime examEndTime questions allowLateEntry createdAt');
     
-    console.log(`Found ${exams.length} approved exams`);
+    console.log(`Found ${exams.length} approved exams after date filtering`);
     
     // Check which exams the student is already registered for
     const registrations = await Registration.find({ student: req.user.id }).select('exam');

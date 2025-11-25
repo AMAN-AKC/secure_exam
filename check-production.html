@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Production Debug Check</title>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        .output { background: #252526; padding: 15px; margin: 10px 0; border-radius: 5px; white-space: pre-wrap; }
+        button { background: #0e639c; color: white; border: none; padding: 10px 20px; margin: 5px; cursor: pointer; border-radius: 3px; }
+        button:hover { background: #1177bb; }
+        .error { color: #f48771; }
+        .success { color: #4ec9b0; }
+        h3 { color: #4ec9b0; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Production Database Debug Check</h1>
+    
+    <h3>Step 1: Check Exams in Production</h3>
+    <button onclick="checkExams()">Check All Exams (Production DB)</button>
+    <button onclick="checkPendingExams()">Check Pending Exams</button>
+    <div id="exams" class="output">Click button to check...</div>
+
+    <h3>Step 2: Check Students</h3>
+    <button onclick="checkStudents()">Check All Students</button>
+    <div id="students" class="output">Click button to check...</div>
+
+    <h3>Step 3: Check Registrations</h3>
+    <button onclick="checkRegistrations()">Check All Registrations</button>
+    <div id="registrations" class="output">Click button to check...</div>
+
+    <h3>Step 4: Test Student API Endpoint</h3>
+    <input type="text" id="studentToken" placeholder="Paste student JWT token here" style="width: 500px; padding: 8px;">
+    <button onclick="testStudentExams()">Test /student/exams Endpoint</button>
+    <div id="studentTest" class="output">Enter student token and click...</div>
+
+    <script>
+        const API_BASE = 'https://secure-exam-roxt.onrender.com/api';
+
+        async function checkExams() {
+            const output = document.getElementById('exams');
+            output.innerHTML = '⏳ Loading...';
+            try {
+                const res = await fetch(`${API_BASE}/debug/exams`);
+                const data = await res.json();
+                
+                output.innerHTML = `<span class="success">✓ Found ${data.length} exams</span>\n\n`;
+                
+                const approved = data.filter(e => e.status === 'approved');
+                const pending = data.filter(e => e.status === 'pending');
+                const rejected = data.filter(e => e.status === 'rejected');
+                
+                output.innerHTML += `📊 Status Breakdown:\n`;
+                output.innerHTML += `  • Approved: ${approved.length}\n`;
+                output.innerHTML += `  • Pending: ${pending.length}\n`;
+                output.innerHTML += `  • Rejected: ${rejected.length}\n\n`;
+                
+                if (approved.length > 0) {
+                    output.innerHTML += `<span class="success">✓ APPROVED EXAMS (Students should see these):</span>\n`;
+                    approved.forEach(e => {
+                        const now = new Date();
+                        const availableFrom = e.availableFrom ? new Date(e.availableFrom) : null;
+                        const availableTo = e.availableTo ? new Date(e.availableTo) : null;
+                        
+                        let availability = '✓ Available now';
+                        if (availableFrom && now < availableFrom) {
+                            availability = `⏰ Opens ${availableFrom.toLocaleString()}`;
+                        } else if (availableTo && now > availableTo) {
+                            availability = `❌ Closed ${availableTo.toLocaleString()}`;
+                        }
+                        
+                        output.innerHTML += `\n  ${e.title} (${e._id})\n`;
+                        output.innerHTML += `    Status: ${e.status} - ${availability}\n`;
+                        output.innerHTML += `    Questions: ${e.questions?.length || 0}\n`;
+                        output.innerHTML += `    Teacher: ${e.createdBy?.name || e.createdBy?.email}\n`;
+                    });
+                } else {
+                    output.innerHTML += `<span class="error">❌ NO APPROVED EXAMS - Students will see empty list!</span>\n`;
+                }
+                
+                if (pending.length > 0) {
+                    output.innerHTML += `\n<span class="error">⚠️ PENDING EXAMS (Need admin approval):</span>\n`;
+                    pending.forEach(e => {
+                        output.innerHTML += `  • ${e.title} by ${e.createdBy?.name || e.createdBy?.email}\n`;
+                    });
+                }
+                
+                output.innerHTML += `\n\nRaw Data:\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function checkPendingExams() {
+            const output = document.getElementById('exams');
+            output.innerHTML = '⏳ Loading pending exams...';
+            try {
+                const res = await fetch(`${API_BASE}/debug/pending-exams`);
+                const data = await res.json();
+                output.innerHTML = `<span class="success">Found ${data.length} pending exams</span>\n\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function checkStudents() {
+            const output = document.getElementById('students');
+            output.innerHTML = '⏳ Loading...';
+            try {
+                const res = await fetch(`${API_BASE}/debug/users`);
+                const data = await res.json();
+                const students = data.filter(u => u.role === 'student');
+                
+                output.innerHTML = `<span class="success">✓ Found ${students.length} students</span>\n\n`;
+                students.forEach(s => {
+                    output.innerHTML += `• ${s.name || s.email} (ID: ${s._id})\n`;
+                });
+                
+                output.innerHTML += `\n\nAll Users:\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function checkRegistrations() {
+            const output = document.getElementById('registrations');
+            output.innerHTML = '⏳ Loading...';
+            try {
+                const res = await fetch(`${API_BASE}/debug/registrations`);
+                const data = await res.json();
+                
+                output.innerHTML = `<span class="success">✓ Found ${data.length} registrations</span>\n\n`;
+                
+                if (data.length > 0) {
+                    data.forEach(r => {
+                        output.innerHTML += `• Student: ${r.student?.name || r.student?.email || r.student}\n`;
+                        output.innerHTML += `  Exam: ${r.exam?.title || r.exam}\n`;
+                        output.innerHTML += `  Time: ${new Date(r.startTime).toLocaleString()} - ${new Date(r.endTime).toLocaleString()}\n\n`;
+                    });
+                }
+                
+                output.innerHTML += `\nRaw Data:\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function testStudentExams() {
+            const output = document.getElementById('studentTest');
+            const token = document.getElementById('studentToken').value.trim();
+            
+            if (!token) {
+                output.innerHTML = '<span class="error">❌ Please enter student JWT token</span>';
+                return;
+            }
+            
+            output.innerHTML = '⏳ Testing student API endpoint...';
+            try {
+                const res = await fetch(`${API_BASE}/student/exams`, {
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!res.ok) {
+                    const error = await res.json();
+                    output.innerHTML = `<span class="error">❌ HTTP ${res.status}: ${JSON.stringify(error, null, 2)}</span>`;
+                    return;
+                }
+                
+                const data = await res.json();
+                output.innerHTML = `<span class="success">✓ SUCCESS! Student sees ${data.length} exams</span>\n\n`;
+                
+                if (data.length === 0) {
+                    output.innerHTML += `<span class="error">⚠️ ISSUE FOUND: Student API returns empty array!\span>`;
+                    output.innerHTML += `\n\nPossible causes:\n`;
+                    output.innerHTML += `1. No approved exams exist\n`;
+                    output.innerHTML += `2. All approved exams have availableFrom in future\n`;
+                    output.innerHTML += `3. All approved exams have availableTo in past\n`;
+                    output.innerHTML += `4. Query logic issue in backend\n`;
+                } else {
+                    output.innerHTML += `Exams visible to student:\n`;
+                    data.forEach(e => {
+                        output.innerHTML += `\n  ${e.title}\n`;
+                        output.innerHTML += `    Registered: ${e.isRegistered ? 'YES ✓' : 'NO'}\n`;
+                        output.innerHTML += `    Questions: ${e.questionCount}\n`;
+                    });
+                }
+                
+                output.innerHTML += `\n\nRaw Response:\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+    </script>
+</body>
+</html>

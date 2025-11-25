@@ -1,0 +1,168 @@
+.admin-dashboard {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  padding: 20px;
+}
+
+.admin-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 30px;
+  border-radius: 15px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  color: white;
+}
+
+.admin-container h1 {
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2em;
+  color: white;
+}
+
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-bottom: 30px;
+}
+
+.logout-btn {
+  background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.admin-section {
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.admin-section h3 {
+  margin-top: 0;
+  margin-bottom: 15px;
+  color: white;
+}
+
+.view-btn,
+.danger-btn,
+.tamper-btn,
+.reset-btn {
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 16px;
+  margin: 5px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.view-btn {
+  background: linear-gradient(45deg, #4ecdc4, #44a08d);
+}
+
+.danger-btn {
+  background: linear-gradient(45deg, #ff6b6b, #ee5a52);
+}
+
+.tamper-btn {
+  background: linear-gradient(45deg, #ff9500, #ff6b00);
+}
+
+.reset-btn {
+  background: linear-gradient(45deg, #dc3545, #c82333);
+}
+
+.view-btn:hover,
+.danger-btn:hover,
+.tamper-btn:hover,
+.reset-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+}
+
+.exam-id-input {
+  width: 100%;
+  max-width: 400px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 14px;
+}
+
+.warning-box {
+  background: rgba(255, 193, 7, 0.2);
+  padding: 15px;
+  border-radius: 8px;
+  border-left: 4px solid #ffc107;
+  margin: 15px 0;
+  color: white;
+}
+
+.output-box {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 20px;
+  min-height: 150px;
+  max-height: 600px;
+  overflow-y: auto;
+}
+
+.output-box pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'Courier New', monospace;
+  font-size: 14px;
+  color: #f0f0f0;
+  margin: 0;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .admin-container {
+    padding: 15px;
+  }
+
+  .admin-container h1 {
+    font-size: 1.5em;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .view-btn,
+  .danger-btn,
+  .tamper-btn,
+  .reset-btn {
+    width: 100%;
+    margin: 5px 0;
+  }
+
+  .exam-id-input {
+    max-width: 100%;
+  }
+}

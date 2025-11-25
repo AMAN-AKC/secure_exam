@@ -157,7 +157,7 @@ export default function Register(){
   return (
     <div className="container">
       <div className="flex justify-center">
-        <div style={{ width: '100%', maxWidth: '400px' }}>
+        <div style={{ width: '100%', maxWidth: '520px' }}>
           {/* Hero Section */}
           <div className="text-center mb-8">
             <div className="mb-4 text-4xl">🚀</div>

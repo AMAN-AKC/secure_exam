@@ -2,6 +2,38 @@
 /* HERO & PAGE SECTIONS */
 /* ============================================ */
 
+/* Interactive / Utility */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.1rem;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform 220ms cubic-bezier(.2,.9,.2,1), box-shadow 220ms ease, opacity 200ms ease;
+  will-change: transform;
+}
+.btn:active { transform: translateY(1px) scale(0.995); }
+.btn-primary { background: linear-gradient(90deg,#6366f1,#8b5cf6); color: white; box-shadow: 0 8px 28px rgba(99,102,241,0.18); }
+.btn-outline { background: transparent; border: 1.5px solid rgba(255,255,255,0.12); color: white; }
+.btn-lg { padding: 0.9rem 1.4rem; font-size: 1rem; }
+.btn:hover { transform: translateY(-6px); }
+
+/* reveal on scroll */
+.reveal { opacity: 0; transform: translateY(20px) scale(0.995); transition: opacity 600ms ease, transform 600ms cubic-bezier(.2,.9,.2,1); }
+.reveal.revealed { opacity: 1; transform: translateY(0) scale(1); }
+
+/* tilt subtle hover for cards */
+.tilt-card { transition: transform 350ms cubic-bezier(.2,.9,.2,1), box-shadow 350ms ease; transform-origin: center; }
+.tilt-card:hover { transform: perspective(800px) rotateX(2deg) rotateY(-4deg) translateY(-6px); box-shadow: 0 20px 60px rgba(16,24,40,0.10); }
+
+/* subtle floating background motion for hero */
+.hero-bg-floating { will-change: transform; animation: float 10s ease-in-out infinite; }
+
+
 .hero {
   text-align: center;
   padding: var(--space-2xl) 0;

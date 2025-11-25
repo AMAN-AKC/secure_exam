@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard Diagnostic</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        .section {
+            background: #252526;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            border-left: 4px solid #007acc;
+        }
+        h2 { color: #4ec9b0; margin-top: 0; }
+        h3 { color: #dcdcaa; }
+        .output {
+            background: #1e1e1e;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        button {
+            background: #0e639c;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 5px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #1177bb; }
+        .error { color: #f48771; }
+        .success { color: #4ec9b0; }
+        .warning { color: #dcdcaa; }
+        input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            background: #3c3c3c;
+            border: 1px solid #555;
+            color: #d4d4d4;
+            border-radius: 4px;
+        }
+        .info-box {
+            background: #264f78;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Student Dashboard Diagnostic Tool</h1>
+    
+    <div class="info-box">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Login to the deployed app as a student: <a href="https://secure-exam-theta.vercel.app" target="_blank">https://secure-exam-theta.vercel.app</a></li>
+            <li>Open browser DevTools (F12) → Application/Storage → Local Storage</li>
+            <li>Copy the "token" value and paste it below</li>
+            <li>Run diagnostics to see what's happening</li>
+        </ol>
+    </div>
+
+    <div class="section">
+        <h2>Step 1: Environment Check</h2>
+        <button onclick="checkEnvironment()">Check API Configuration</button>
+        <div id="envOutput" class="output">Click button to check...</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 2: Student Authentication Test</h2>
+        <label for="tokenInput"><strong>Student JWT Token:</strong></label>
+        <input type="text" id="tokenInput" placeholder="Paste student JWT token from localStorage">
+        <button onclick="validateToken()">Validate Token</button>
+        <div id="tokenOutput" class="output">Enter token and click validate...</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 3: Test Student Exams Endpoint</h2>
+        <button onclick="testStudentExams()">Fetch /student/exams</button>
+        <div id="examsOutput" class="output">Click button to test...</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 4: Test Student Registrations</h2>
+        <button onclick="testStudentRegistrations()">Fetch /student/registrations</button>
+        <div id="regsOutput" class="output">Click button to test...</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 5: Direct Backend Test (No Auth)</h2>
+        <button onclick="testBackendDirect()">Test Backend Health</button>
+        <button onclick="testDebugExams()">Test /debug/exams</button>
+        <div id="backendOutput" class="output">Click button to test...</div>
+    </div>
+
+    <div class="section">
+        <h2>Step 6: Network Analysis</h2>
+        <button onclick="analyzeNetwork()">Analyze API Calls</button>
+        <div id="networkOutput" class="output">This will analyze the network requests...</div>
+    </div>
+
+    <script>
+        const API_BASE = 'https://secure-exam-roxt.onrender.com/api';
+        
+        function getToken() {
+            return document.getElementById('tokenInput').value.trim();
+        }
+
+        function checkEnvironment() {
+            const output = document.getElementById('envOutput');
+            output.innerHTML = `<span class="success">✓ Environment Configuration:</span>\n\n`;
+            output.innerHTML += `API Base URL: ${API_BASE}\n`;
+            output.innerHTML += `Current Origin: ${window.location.origin}\n`;
+            output.innerHTML += `User Agent: ${navigator.userAgent}\n`;
+            output.innerHTML += `\n<span class="warning">Expected configuration:</span>\n`;
+            output.innerHTML += `• Frontend: https://secure-exam-theta.vercel.app\n`;
+            output.innerHTML += `• Backend: https://secure-exam-roxt.onrender.com\n`;
+            output.innerHTML += `• Vercel Env Var VITE_API_BASE_URL should be: ${API_BASE}\n`;
+        }
+
+        async function validateToken() {
+            const output = document.getElementById('tokenOutput');
+            const token = getToken();
+            
+            if (!token) {
+                output.innerHTML = '<span class="error">❌ No token provided</span>';
+                return;
+            }
+            
+            output.innerHTML = '⏳ Validating token...';
+            
+            try {
+                // Try to decode JWT (basic check)
+                const parts = token.split('.');
+                if (parts.length !== 3) {
+                    output.innerHTML = '<span class="error">❌ Invalid JWT format</span>';
+                    return;
+                }
+                
+                const payload = JSON.parse(atob(parts[1]));
+                output.innerHTML = `<span class="success">✓ Token Structure Valid</span>\n\n`;
+                output.innerHTML += `Decoded Payload:\n${JSON.stringify(payload, null, 2)}\n\n`;
+                
+                // Check expiry
+                if (payload.exp) {
+                    const expiry = new Date(payload.exp * 1000);
+                    const now = new Date();
+                    if (expiry < now) {
+                        output.innerHTML += `<span class="error">❌ Token EXPIRED at ${expiry.toLocaleString()}</span>\n`;
+                    } else {
+                        output.innerHTML += `<span class="success">✓ Token valid until ${expiry.toLocaleString()}</span>\n`;
+                    }
+                }
+                
+                // Check role
+                if (payload.role) {
+                    if (payload.role === 'student') {
+                        output.innerHTML += `<span class="success">✓ Role: ${payload.role}</span>\n`;
+                    } else {
+                        output.innerHTML += `<span class="error">❌ Wrong role: ${payload.role} (expected: student)</span>\n`;
+                    }
+                }
+                
+                output.innerHTML += `\nUser ID: ${payload.id || payload._id || 'Not found'}\n`;
+                output.innerHTML += `Email: ${payload.email || 'Not found'}\n`;
+                
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error decoding token: ${err.message}</span>`;
+            }
+        }
+
+        async function testStudentExams() {
+            const output = document.getElementById('examsOutput');
+            const token = getToken();
+            
+            if (!token) {
+                output.innerHTML = '<span class="error">❌ Enter token first (Step 2)</span>';
+                return;
+            }
+            
+            output.innerHTML = '⏳ Fetching /student/exams...';
+            
+            try {
+                const startTime = Date.now();
+                const response = await fetch(`${API_BASE}/student/exams`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                const duration = Date.now() - startTime;
+                
+                output.innerHTML = `<span class="success">✓ Response received in ${duration}ms</span>\n`;
+                output.innerHTML += `Status: ${response.status} ${response.statusText}\n\n`;
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    output.innerHTML += `<span class="error">❌ Request Failed</span>\n`;
+                    output.innerHTML += `Error: ${JSON.stringify(data, null, 2)}\n`;
+                    return;
+                }
+                
+                output.innerHTML += `<span class="success">✓ Success! Found ${data.length} exams</span>\n\n`;
+                
+                if (data.length === 0) {
+                    output.innerHTML += `<span class="error">⚠️ ISSUE: Empty array returned</span>\n`;
+                    output.innerHTML += `\nPossible causes:\n`;
+                    output.innerHTML += `1. No approved exams in production database\n`;
+                    output.innerHTML += `2. Exams have restrictive availableFrom/availableTo dates\n`;
+                    output.innerHTML += `3. Backend query filtering out all exams\n`;
+                    output.innerHTML += `4. Database connection issue\n`;
+                } else {
+                    output.innerHTML += `Exams returned:\n`;
+                    data.forEach((exam, i) => {
+                        output.innerHTML += `\n${i + 1}. ${exam.title}\n`;
+                        output.innerHTML += `   ID: ${exam._id || exam.id}\n`;
+                        output.innerHTML += `   Questions: ${exam.questionCount}\n`;
+                        output.innerHTML += `   Duration: ${exam.durationMinutes}min\n`;
+                        output.innerHTML += `   Registered: ${exam.isRegistered ? 'YES' : 'NO'}\n`;
+                        output.innerHTML += `   Teacher: ${exam.createdBy?.name || exam.createdBy?.email}\n`;
+                    });
+                }
+                
+                output.innerHTML += `\n\nFull Response:\n${JSON.stringify(data, null, 2)}`;
+                
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Network Error: ${err.message}</span>\n`;
+                output.innerHTML += `\nThis could be:\n`;
+                output.innerHTML += `• CORS blocking the request\n`;
+                output.innerHTML += `• Backend server down\n`;
+                output.innerHTML += `• Network connectivity issue\n`;
+            }
+        }
+
+        async function testStudentRegistrations() {
+            const output = document.getElementById('regsOutput');
+            const token = getToken();
+            
+            if (!token) {
+                output.innerHTML = '<span class="error">❌ Enter token first</span>';
+                return;
+            }
+            
+            output.innerHTML = '⏳ Fetching /student/registrations...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/student/registrations`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                const data = await response.json();
+                
+                if (!response.ok) {
+                    output.innerHTML = `<span class="error">❌ Failed: ${JSON.stringify(data, null, 2)}</span>`;
+                    return;
+                }
+                
+                output.innerHTML = `<span class="success">✓ Found ${data.length} registrations</span>\n\n`;
+                output.innerHTML += JSON.stringify(data, null, 2);
+                
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function testBackendDirect() {
+            const output = document.getElementById('backendOutput');
+            output.innerHTML = '⏳ Testing backend health...';
+            
+            try {
+                const response = await fetch('https://secure-exam-roxt.onrender.com/');
+                const data = await response.json();
+                output.innerHTML = `<span class="success">✓ Backend is alive!</span>\n\n${JSON.stringify(data, null, 2)}`;
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Backend unreachable: ${err.message}</span>`;
+            }
+        }
+
+        async function testDebugExams() {
+            const output = document.getElementById('backendOutput');
+            output.innerHTML = '⏳ Fetching /debug/exams...';
+            
+            try {
+                const response = await fetch(`${API_BASE}/debug/exams`);
+                const data = await response.json();
+                
+                const approved = data.filter(e => e.status === 'approved');
+                
+                output.innerHTML = `<span class="success">✓ Total exams: ${data.length}</span>\n`;
+                output.innerHTML += `<span class="success">✓ Approved: ${approved.length}</span>\n\n`;
+                
+                if (approved.length > 0) {
+                    output.innerHTML += `Approved exams in database:\n`;
+                    approved.forEach(e => {
+                        output.innerHTML += `\n• ${e.title}\n`;
+                        output.innerHTML += `  availableFrom: ${e.availableFrom || 'null'}\n`;
+                        output.innerHTML += `  availableTo: ${e.availableTo || 'null'}\n`;
+                    });
+                }
+                
+                output.innerHTML += `\n\nFull data:\n${JSON.stringify(data, null, 2)}`;
+                
+            } catch (err) {
+                output.innerHTML = `<span class="error">❌ Error: ${err.message}</span>`;
+            }
+        }
+
+        async function analyzeNetwork() {
+            const output = document.getElementById('networkOutput');
+            output.innerHTML = `<span class="warning">Network Analysis:</span>\n\n`;
+            output.innerHTML += `To perform detailed network analysis:\n\n`;
+            output.innerHTML += `1. Open DevTools (F12) → Network tab\n`;
+            output.innerHTML += `2. Login as student on https://secure-exam-theta.vercel.app\n`;
+            output.innerHTML += `3. Look for request to: /student/exams\n`;
+            output.innerHTML += `4. Check:\n`;
+            output.innerHTML += `   • Request URL (should be https://secure-exam-roxt.onrender.com/api/student/exams)\n`;
+            output.innerHTML += `   • Status Code (should be 200)\n`;
+            output.innerHTML += `   • Response body (should contain exams array)\n`;
+            output.innerHTML += `   • Request headers (should have Authorization: Bearer ...)\n`;
+            output.innerHTML += `   • CORS headers in response\n\n`;
+            output.innerHTML += `Common issues:\n`;
+            output.innerHTML += `• 401: Token missing or invalid\n`;
+            output.innerHTML += `• 403: Wrong role (not student)\n`;
+            output.innerHTML += `• CORS error: Backend not allowing frontend origin\n`;
+            output.innerHTML += `• Empty []: No approved exams OR query filtering them out\n`;
+        }
+
+        // Auto-check environment on load
+        window.onload = () => {
+            checkEnvironment();
+        };
+    </script>
+</body>
+</html>

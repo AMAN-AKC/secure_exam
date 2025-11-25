@@ -12,11 +12,15 @@ export const listApprovedExams = async (req, res) => {
     res.set('Expires', '0');
     
     console.log('Student listApprovedExams called by user:', req.user);
+    const now = new Date();
     
-    // Find ALL approved exams - let frontend handle availability display
-    // Date filtering removed due to timezone issues between frontend and backend
+    // Find approved exams that are currently available for registration
     const exams = await Exam.find({ 
-      status: 'approved'
+      status: 'approved',
+      $or: [
+        { availableFrom: { $lte: now }, availableTo: { $gte: now } },
+        { availableFrom: null, availableTo: null }
+      ]
     })
     .populate('createdBy', 'name email')
     .select('title description createdBy durationMinutes availableFrom availableTo examStartTime examEndTime questions allowLateEntry createdAt');

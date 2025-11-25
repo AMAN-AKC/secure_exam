@@ -116,7 +116,17 @@ export default function TeacherDashboard(){
   const updateExamSettings = async () => {
     if (!exam) return;
     try {
-      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, examSettings);
+      // Convert local datetime-local values to proper ISO strings with timezone
+      const settingsToSend = {
+        ...examSettings,
+        availableFrom: examSettings.availableFrom ? new Date(examSettings.availableFrom).toISOString() : null,
+        availableTo: examSettings.availableTo ? new Date(examSettings.availableTo).toISOString() : null,
+        examStartTime: examSettings.examStartTime ? new Date(examSettings.examStartTime).toISOString() : null,
+        examEndTime: examSettings.examEndTime ? new Date(examSettings.examEndTime).toISOString() : null,
+        resultsReleaseDate: examSettings.resultsReleaseDate ? new Date(examSettings.resultsReleaseDate).toISOString() : null
+      };
+      
+      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
       setExam(data);
       setShowSettingsModal(false);
       setShowQuestionModal(true);

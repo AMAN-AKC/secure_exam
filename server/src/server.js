@@ -9,7 +9,15 @@ import router from './routes/index.js';
 dotenv.config();
 const app = express();
 
-app.use(cors());
+// Configure CORS to allow Vercel frontend
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'https://secure-exam-theta.vercel.app'
+  ],
+  credentials: true
+}));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 

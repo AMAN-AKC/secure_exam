@@ -1,6 +1,7 @@
 import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import Layout from './Layout.jsx';
+import Landing from './pages/Landing.jsx';
 import Login from './pages/Login.jsx';
 import Register from './pages/Register.jsx';
 import TeacherDashboard from './pages/TeacherDashboard.jsx';
@@ -14,7 +15,7 @@ export default function App() {
     <NotificationProvider>
       <Routes>
         <Route element={<Layout />}>        
-          <Route index element={<Login />} />
+          <Route index element={<Landing />} />
           <Route path="login" element={<Login />} />
           <Route path="register" element={<Register />} />
 

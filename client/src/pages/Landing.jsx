@@ -1,9 +1,15 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Button from '../components/Button.jsx';
+import './Landing.css';
 
 export default function Landing() {
   const countersStarted = useRef(false);
+  const [openFaq, setOpenFaq] = useState(null);
+
+  const toggleFaq = (index) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
 
   useEffect(() => {
     const prefersReduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -91,9 +97,9 @@ export default function Landing() {
               Create, manage, and conduct exams with bank-level security, real-time monitoring, and comprehensive analytics.
             </p>
             <div className="landing-cta-group">
-              <Link to="/login">
+              <Link to="/register">
                 <Button variant="primary" size="large" className="landing-cta-btn">
-                  🚀 Take Exam
+                  🚀 Get Started
                 </Button>
               </Link>
               <Link to="/login">
@@ -134,14 +140,14 @@ export default function Landing() {
             <p>Detailed performance reports, question analysis, and student progress tracking. Make data-driven decisions.</p>
           </div>
           <div className="feature-card">
-            <div className="feature-icon">📱</div>
-            <h3>Fully Responsive</h3>
-            <p>Seamless experience across all devices. Desktop, tablet, or mobile - always perfectly optimized.</p>
+            <div className="feature-icon">💻</div>
+            <h3>Modern Interface</h3>
+            <p>Clean, intuitive design built with modern web technologies. Easy to navigate and use for all user roles.</p>
           </div>
           <div className="feature-card">
             <div className="feature-icon">🌍</div>
             <h3>Global Ready</h3>
-            <p>Support for multiple timezones, languages, and question formats. Perfect for international institutions.</p>
+            <p>Support for multiple timezones and question formats. Perfect for educational institutions worldwide.</p>
           </div>
         </div>
       </section>
@@ -188,26 +194,105 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="landing-stats reveal">
-        <div className="stats-container">
-          <h2 className="stats-title">Trusted By Educators Worldwide</h2>
-          <div className="stats-grid">
-            <div className="stat-item">
-              <div className="stat-number" data-target="10000" data-suffix="+">0</div>
-              <p className="stat-label">Active Institutions</p>
+      {/* FAQ Section */}
+      <section className="landing-faq reveal">
+        <div className="faq-container">
+          <h2>Frequently Asked Questions</h2>
+          <div className="faq-list">
+            <div className={`faq-item ${openFaq === 0 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(0)}>
+                <h3>How secure is the SecureExam platform?</h3>
+                <span className="faq-icon">{openFaq === 0 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 0 && (
+                <div className="faq-answer">
+                  <p>SecureExam uses bank-level encryption for all exam data. Questions are encrypted end-to-end, and we employ blockchain-based tamper detection to ensure exam integrity. All data is stored securely with regular security audits and compliance with international data protection standards.</p>
+                </div>
+              )}
             </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="500000" data-suffix="+">0</div>
-              <p className="stat-label">Exams Conducted</p>
+
+            <div className={`faq-item ${openFaq === 1 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(1)}>
+                <h3>Can students take exams on mobile devices?</h3>
+                <span className="faq-icon">{openFaq === 1 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 1 && (
+                <div className="faq-answer">
+                  <p>Yes! SecureExam is fully responsive and optimized for all devices including desktops, tablets, and smartphones. Students can take exams from any device with a modern web browser and internet connection.</p>
+                </div>
+              )}
             </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="99.9" data-decimals="1" data-suffix="%">0</div>
-              <p className="stat-label">Uptime SLA</p>
+
+            <div className={`faq-item ${openFaq === 2 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(2)}>
+                <h3>What types of questions can I create?</h3>
+                <span className="faq-icon">{openFaq === 2 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 2 && (
+                <div className="faq-answer">
+                  <p>Teachers can create multiple-choice questions, true/false, short answer, essay questions, and more. Our platform supports rich text formatting, images, and various question formats to suit different assessment needs.</p>
+                </div>
+              )}
             </div>
-            <div className="stat-item">
-              <div className="stat-number" data-target="2000000" data-suffix="+">0</div>
-              <p className="stat-label">Students Tested</p>
+
+            <div className={`faq-item ${openFaq === 3 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(3)}>
+                <h3>How does the approval process work?</h3>
+                <span className="faq-icon">{openFaq === 3 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 3 && (
+                <div className="faq-answer">
+                  <p>After teachers create an exam, it goes to the admin dashboard for review. Admins can preview the exam, check questions, and either approve or request modifications. Once approved, the exam becomes available for student registration.</p>
+                </div>
+              )}
+            </div>
+
+            <div className={`faq-item ${openFaq === 4 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(4)}>
+                <h3>Can I schedule exams for specific dates and times?</h3>
+                <span className="faq-icon">{openFaq === 4 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 4 && (
+                <div className="faq-answer">
+                  <p>Absolutely! You can set specific start and end dates/times for exams. The platform supports both fixed schedules and flexible timing windows. You can also set time limits per exam and configure timezone settings for international students.</p>
+                </div>
+              )}
+            </div>
+
+            <div className={`faq-item ${openFaq === 5 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(5)}>
+                <h3>What kind of analytics and reports are available?</h3>
+                <span className="faq-icon">{openFaq === 5 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 5 && (
+                <div className="faq-answer">
+                  <p>SecureExam provides comprehensive analytics including individual student performance, question-level statistics, time spent on each question, pass/fail rates, score distributions, and more. You can export reports in various formats for further analysis.</p>
+                </div>
+              )}
+            </div>
+
+            <div className={`faq-item ${openFaq === 6 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(6)}>
+                <h3>Is there a limit to the number of students or exams?</h3>
+                <span className="faq-icon">{openFaq === 6 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 6 && (
+                <div className="faq-answer">
+                  <p>Our platform is designed to scale with your needs. There are no hard limits on the number of students or exams. We support thousands of concurrent test-takers with minimal latency, making it suitable for institutions of any size.</p>
+                </div>
+              )}
+            </div>
+
+            <div className={`faq-item ${openFaq === 7 ? 'active' : ''}`}>
+              <div className="faq-question" onClick={() => toggleFaq(7)}>
+                <h3>What happens if there's a technical issue during an exam?</h3>
+                <span className="faq-icon">{openFaq === 7 ? '−' : '+'}</span>
+              </div>
+              {openFaq === 7 && (
+                <div className="faq-answer">
+                  <p>We maintain a 99.9% uptime SLA and have built-in auto-save features to prevent data loss. If a student experiences connectivity issues, their progress is saved automatically. Our 24/7 support team is available to assist with any technical difficulties.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -230,43 +315,6 @@ export default function Landing() {
               </Button>
             </Link>
           </div>
-        </div>
-      </section>
-
-      {/* Footer Section */}
-      <section className="landing-footer reveal">
-        <div className="footer-content">
-          <div className="footer-section">
-            <h4>About SecureExam</h4>
-            <p>The premier platform for secure, scalable online examinations trusted by educational institutions worldwide. Enterprise security meets intuitive design.</p>
-          </div>
-          <div className="footer-section">
-            <h4>Features</h4>
-            <ul>
-              <li><a href="#features">🔒 Security</a></li>
-              <li><a href="#features">📊 Analytics</a></li>
-              <li><a href="#features">🎯 Scheduling</a></li>
-              <li><a href="#features">📋 Reporting</a></li>
-            </ul>
-          </div>
-          <div className="footer-section">
-            <h4>Legal</h4>
-            <ul>
-              <li><a href="#privacy">Privacy Policy</a></li>
-              <li><a href="#terms">Terms of Service</a></li>
-              <li><a href="#security">Security</a></li>
-              <li><a href="#contact">Contact Support</a></li>
-            </ul>
-          </div>
-          <div className="footer-section">
-            <h4>Get In Touch</h4>
-            <p>📧 support@secureexam.com</p>
-            <p>☎️ +1 (555) 123-4567</p>
-            <p>🕐 Available 24/7</p>
-          </div>
-        </div>
-        <div className="footer-bottom">
-          <p>&copy; 2025 SecureExam. All rights reserved. Built with ❤️ for education.</p>
         </div>
       </section>
     </div>

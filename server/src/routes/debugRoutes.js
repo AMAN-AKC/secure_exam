@@ -3,13 +3,8 @@ import { User } from '../models/User.js';
 import { Exam } from '../models/Exam.js';
 import { Registration } from '../models/Registration.js';
 import { Result } from '../models/Result.js';
-import { authMiddleware, requireRole } from '../middlewares/auth.js';
 
 const router = Router();
-
-// Apply admin authentication to all debug routes
-router.use(authMiddleware());
-router.use(requireRole('admin'));
 
 // Get all users (admin only in production)
 router.get('/users', async (req, res) => {
@@ -129,8 +124,12 @@ router.get('/stats', async (req, res) => {
   }
 });
 
-// Clear all test data (admin only)
+// Clear all test data (development only)
 router.delete('/clear-test-data', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Only available in development' });
+  }
+  
   try {
     // Delete test users (emails containing 'test' or 'debug')
     const deleteResult = await User.deleteMany({
@@ -242,8 +241,12 @@ router.post('/fix-pending-exams', async (req, res) => {
   }
 });
 
-// Demonstrate blockchain tampering detection (admin only)
+// Demonstrate blockchain tampering detection
 router.post('/tamper-exam/:examId', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Only available in development' });
+  }
+  
   try {
     const { examId } = req.params;
     const exam = await Exam.findById(examId);
@@ -380,8 +383,12 @@ router.get('/validate-blockchain/:examId', async (req, res) => {
   }
 });
 
-// Reset entire database (admin only)
+// Reset entire database (development only)
 router.delete('/reset-database', async (req, res) => {
+  if (process.env.NODE_ENV !== 'development') {
+    return res.status(403).json({ error: 'Only available in development' });
+  }
+  
   try {
     // Delete all data from all collections
     const userResult = await User.deleteMany({});

@@ -8,7 +8,7 @@ import TeacherDashboard from './pages/TeacherDashboard.jsx';
 import TeacherExams from './pages/TeacherExams.jsx';
 import TeacherAnalytics from './pages/TeacherAnalytics.jsx';
 import TeacherHistory from './pages/TeacherHistory.jsx';
-import AdminDashboard from './pages/AdminDashboard.jsx';
+import AdminDashboard from './pages/AdminDashboard_New.jsx';
 import StudentDashboard from './pages/StudentDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';

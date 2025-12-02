@@ -6,13 +6,14 @@ export default function Layout(){
   const { user, logout } = useAuth();
   const location = useLocation();
   
-  // Hide navbar on dashboard pages and auth pages (they have their own styling)
-  // Check if the path starts with /teacher, /admin, /student, /login, or /register
+  // Hide navbar on dashboard pages, auth pages, and landing page (they have their own styling)
+  // Check if the path starts with /teacher, /admin, /student, /login, /register, or is /
   const isDashboardPage = location.pathname.startsWith('/teacher') || 
                           location.pathname.startsWith('/admin') || 
                           location.pathname.startsWith('/student') ||
                           location.pathname === '/login' ||
-                          location.pathname === '/register';
+                          location.pathname === '/register' ||
+                          location.pathname === '/';
   
   return (
     <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>

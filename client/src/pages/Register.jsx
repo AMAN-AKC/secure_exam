@@ -155,9 +155,83 @@ export default function Register(){
   };
 
   return (
-    <div className="container">
-      <div className="flex justify-center">
-        <div style={{ width: '100%', maxWidth: '520px' }}>
+    <div style={{
+      width: '100%',
+      minHeight: '100vh',
+      display: 'flex',
+      flexDirection: 'column',
+      background: 'linear-gradient(135deg, #f5f0ff 0%, #fef5e7 25%, #ffe8f0 50%, #e8f4ff 75%, #f0e8ff 100%)',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {/* Wave Background Shapes */}
+      <div style={{
+        position: 'absolute',
+        top: '-10%',
+        left: '-5%',
+        width: '500px',
+        height: '500px',
+        background: 'radial-gradient(circle, rgba(196, 181, 253, 0.3) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(80px)',
+        pointerEvents: 'none'
+      }}></div>
+      
+      <div style={{
+        position: 'absolute',
+        top: '20%',
+        right: '-10%',
+        width: '600px',
+        height: '600px',
+        background: 'radial-gradient(circle, rgba(253, 192, 248, 0.2) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(100px)',
+        pointerEvents: 'none'
+      }}></div>
+      
+      <div style={{
+        position: 'absolute',
+        bottom: '-5%',
+        left: '10%',
+        width: '400px',
+        height: '400px',
+        background: 'radial-gradient(circle, rgba(174, 194, 248, 0.25) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(80px)',
+        pointerEvents: 'none'
+      }}></div>
+
+      <div style={{
+        position: 'absolute',
+        bottom: '10%',
+        right: '5%',
+        width: '350px',
+        height: '350px',
+        background: 'radial-gradient(circle, rgba(253, 208, 162, 0.2) 0%, transparent 70%)',
+        borderRadius: '50%',
+        filter: 'blur(90px)',
+        pointerEvents: 'none',
+        animation: 'float 6s ease-in-out infinite'
+      }}></div>
+
+      <style>{`
+        @keyframes float {
+          0%, 100% { transform: translateY(0px); }
+          50% { transform: translateY(20px); }
+        }
+      `}</style>
+
+      {/* Main Content */}
+      <div style={{
+        flex: 1,
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '2rem',
+        paddingTop: '4rem',
+        position: 'relative',
+        zIndex: 10
+      }}>
+      <div className="container" style={{ width: '100%', maxWidth: '520px' }}>
           {/* Hero Section */}
           <div className="text-center mb-8">
             <div className="mb-4 text-4xl">🚀</div>
@@ -271,6 +345,7 @@ export default function Register(){
             </div>
           </Card>
         </div>
+      </div>
       </div>
 
       {/* Phone Verification Modal */}

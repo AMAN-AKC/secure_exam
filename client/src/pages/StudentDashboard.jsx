@@ -143,8 +143,13 @@ export default function StudentDashboard(){
       if (e?.response?.status === 403) {
         const error = e?.response?.data;
         if (error?.message) {
-          // Show detailed timing message
-          alert(`${error.error}\n\n${error.message}`);
+          // Format start time correctly from ISO string
+          let displayMessage = error.message;
+          if (error.minutesUntilStart !== undefined && error.startTime) {
+            const startTime = dayjs(error.startTime);
+            displayMessage = `Exam starts in ${error.minutesUntilStart} minutes at ${startTime.format('HH:mm')}`;
+          }
+          alert(`${error.error}\n\n${displayMessage}`);
         } else {
           alert(error?.error || 'Exam not accessible now.');
         }

@@ -182,8 +182,10 @@ export const accessExam = async (req, res) => {
       const minutesUntilStart = startTime.diff(now, 'minute');
       return res.status(403).json({ 
         error: 'Exam not yet available',
-        message: `Exam starts in ${minutesUntilStart} minutes at ${startTime.format('HH:mm')}`,
-        startTime: startTime.toISOString()
+        message: `Exam starts in ${minutesUntilStart} minutes`,
+        minutesUntilStart,
+        startTime: startTime.toISOString(),
+        currentServerTime: now.toISOString()
       });
     }
     

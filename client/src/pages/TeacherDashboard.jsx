@@ -1020,7 +1020,25 @@ export default function TeacherDashboard() {
                   onClick={async () => {
                     try {
                       setSubmitting(true);
-                      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, examSettings);
+                      // Convert local datetime-local values to UTC ISO strings
+                      const settingsToSend = { ...examSettings };
+                      if (settingsToSend.availableFrom) {
+                        settingsToSend.availableFrom = new Date(settingsToSend.availableFrom).toISOString();
+                      }
+                      if (settingsToSend.availableTo) {
+                        settingsToSend.availableTo = new Date(settingsToSend.availableTo).toISOString();
+                      }
+                      if (settingsToSend.examStartTime) {
+                        settingsToSend.examStartTime = new Date(settingsToSend.examStartTime).toISOString();
+                      }
+                      if (settingsToSend.examEndTime) {
+                        settingsToSend.examEndTime = new Date(settingsToSend.examEndTime).toISOString();
+                      }
+                      if (settingsToSend.resultsReleaseDate) {
+                        settingsToSend.resultsReleaseDate = new Date(settingsToSend.resultsReleaseDate).toISOString();
+                      }
+                      
+                      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
                       setExam(data);
                       setShowSettingsModal(false);
                       setShowQuestionModal(true);

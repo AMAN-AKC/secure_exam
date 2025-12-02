@@ -161,7 +161,8 @@ router.get('/pending-exams', async (req, res) => {
       let expiryReason = null;
       
       // Check if registration period has started and admin hasn't approved yet
-      if (exam.availableFrom && now >= new Date(exam.availableFrom)) {
+      // Convert both to timestamps for proper UTC comparison
+      if (exam.availableFrom && now.getTime() >= new Date(exam.availableFrom).getTime()) {
         canApprove = false;
         expiryReason = 'Registration period has already started';
       }

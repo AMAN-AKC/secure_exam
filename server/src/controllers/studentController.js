@@ -72,13 +72,13 @@ export const registerForExam = async (req, res) => {
       return res.status(409).json({ error: 'Already registered for this exam' });
     }
 
-    const now = dayjs();
+    const now = dayjs.utc();
     
     // Check if exam is available for registration
-    if (exam.availableFrom && dayjs(exam.availableFrom).isAfter(now)) {
+    if (exam.availableFrom && dayjs.utc(exam.availableFrom).isAfter(now)) {
       return res.status(400).json({ error: 'Exam registration not yet open' });
     }
-    if (exam.availableTo && dayjs(exam.availableTo).isBefore(now)) {
+    if (exam.availableTo && dayjs.utc(exam.availableTo).isBefore(now)) {
       return res.status(400).json({ error: 'Exam registration has closed' });
     }
 
@@ -86,8 +86,8 @@ export const registerForExam = async (req, res) => {
     
     if (exam.examStartTime && exam.examEndTime) {
       // Fixed schedule exam - all students take at same time
-      startTime = dayjs(exam.examStartTime);
-      endTime = dayjs(exam.examEndTime);
+      startTime = dayjs.utc(exam.examStartTime);
+      endTime = dayjs.utc(exam.examEndTime);
       
       // Validate that the scheduled time hasn't passed
       if (endTime.isBefore(now)) {
@@ -96,7 +96,7 @@ export const registerForExam = async (req, res) => {
     } else {
       // Flexible scheduling - find available slot
       const durationMinutes = exam.durationMinutes || 60;
-      startTime = now.add(1, 'hour').minute(0).second(0).millisecond(0);
+      startTime = now.utc().add(1, 'hour').minute(0).second(0).millisecond(0);
       endTime = startTime.add(durationMinutes, 'minute');
 
       // Check for conflicts with other exams
@@ -108,8 +108,8 @@ export const registerForExam = async (req, res) => {
       while (!safe && attempts < 100) { // Prevent infinite loop
         safe = true;
         for (const r of regs) {
-          const rs = dayjs(r.startTime);
-          const re = dayjs(r.endTime);
+          const rs = dayjs.utc(r.startTime);
+          const re = dayjs.utc(r.endTime);
           if (overlaps(startTime, endTime, rs, re)) {
             startTime = re.add(30, 'minute'); // 30 min buffer between exams
             endTime = startTime.add(durationMinutes, 'minute');
@@ -173,9 +173,9 @@ export const accessExam = async (req, res) => {
       return res.status(404).json({ error: 'Exam not found' });
     }
     
-    const now = dayjs();
-    const startTime = dayjs(reg.startTime);
-    const endTime = dayjs(reg.endTime);
+    const now = dayjs.utc();
+    const startTime = dayjs.utc(reg.startTime);
+    const endTime = dayjs.utc(reg.endTime);
     
     // Check if it's too early
     if (now.isBefore(startTime)) {
@@ -199,7 +199,7 @@ export const accessExam = async (req, res) => {
     
     // Check if late entry is allowed for scheduled exams
     if (exam.examStartTime && !exam.allowLateEntry) {
-      const examScheduledStart = dayjs(exam.examStartTime);
+      const examScheduledStart = dayjs.utc(exam.examStartTime);
       const lateThresholdMinutes = 15; // Allow 15 minutes late entry buffer
       
       if (now.isAfter(examScheduledStart.add(lateThresholdMinutes, 'minute'))) {

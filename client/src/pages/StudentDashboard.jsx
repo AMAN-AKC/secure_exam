@@ -890,7 +890,69 @@ export default function StudentDashboard(){
                 gap: '1rem'
               }}>
                 {results.map(result => {
-                  const percentage = Math.round((result.score / result.total) * 100);
+                  // Check if results are pending/hidden
+                  if (result.resultsHidden) {
+                    return (
+                      <div key={result._id} style={{
+                        background: '#fff7ed',
+                        border: '2px solid #f59e0b',
+                        borderRadius: '0.875rem',
+                        padding: '1.5rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <h4 style={{
+                            fontSize: '1.1rem',
+                            fontWeight: '700',
+                            color: '#1f2937',
+                            margin: '0 0 0.75rem'
+                          }}>
+                            {result.exam?.title}
+                          </h4>
+                          <div style={{
+                            display: 'flex',
+                            gap: '1rem',
+                            fontSize: '0.9rem',
+                            color: '#6b7280',
+                            flexWrap: 'wrap',
+                            marginBottom: '0.75rem'
+                          }}>
+                            <span>📅 Submitted: {dayjs(result.submittedAt).format('MMM DD, YYYY HH:mm')}</span>
+                          </div>
+                          <div style={{
+                            padding: '0.75rem 1rem',
+                            background: '#fef3c7',
+                            borderRadius: '0.5rem',
+                            color: '#92400e',
+                            fontSize: '0.9rem',
+                            fontWeight: '600'
+                          }}>
+                            ⏳ Results will be available: {result.hideReason}
+                          </div>
+                        </div>
+                        <div style={{
+                          textAlign: 'center',
+                          padding: '1.25rem',
+                          background: '#fef3c7',
+                          borderRadius: '0.75rem',
+                          minWidth: '100px'
+                        }}>
+                          <div style={{
+                            fontSize: '0.85rem',
+                            color: '#92400e',
+                            fontWeight: '600'
+                          }}>
+                            ⏱️ PENDING
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  }
+
+                  // Normal result display
+                  const percentage = result.score !== undefined && result.total ? Math.round((result.score / result.total) * 100) : 0;
                   const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : 'F';
                   const gradeColor = percentage >= 70 ? '#10b981' : percentage >= 60 ? '#f59e0b' : '#ef4444';
                   

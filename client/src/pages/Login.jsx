@@ -169,13 +169,13 @@ export default function Login(){
           {/* Hero Section */}
           <div className="text-center mb-8">
             <div className="mb-4 text-6xl" style={{ 
-              background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
             }}>🔒</div>
             <h1 className="text-3xl font-bold mb-2" style={{
-              background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
               backgroundClip: 'text'
@@ -193,7 +193,7 @@ export default function Login(){
                   onClick={() => setAuthMethod('password')}
                   className={`flex-1 py-2 px-4 text-sm font-semibold rounded-md transition duration-300 ${
                     authMethod === 'password'
-                      ? 'bg-gradient-to-r from-blue-500 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                      ? 'bg-gradient-to-r from-violet-600 to-blue-600 text-white shadow-lg shadow-violet-500/30'
                       : 'text-muted hover:text-text hover:bg-panel/50'
                   }`}
                 >
@@ -252,7 +252,7 @@ export default function Login(){
                   loading={loading}
                   style={{ 
                     width: '100%',
-                    background: 'linear-gradient(135deg, #4f7cff 0%, #00d4ff 100%)',
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
                     fontWeight: '600',
                     letterSpacing: '0.5px',
                     fontSize: '1rem'
@@ -275,8 +275,8 @@ export default function Login(){
                   minHeight: '50px',
                   padding: '1rem',
                   borderRadius: '0.75rem',
-                  background: 'linear-gradient(135deg, rgba(255, 152, 0, 0.05) 0%, rgba(255, 87, 34, 0.05) 100%)',
-                  border: '2px solid rgba(255, 152, 0, 0.2)'
+                  background: 'linear-gradient(135deg, rgba(124, 58, 237, 0.05) 0%, rgba(37, 99, 235, 0.05) 100%)',
+                  border: '2px solid rgba(124, 58, 237, 0.2)'
                 }}>
                   <div id="google-login-btn"></div>
                 </div>

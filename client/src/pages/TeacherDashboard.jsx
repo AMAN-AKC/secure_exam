@@ -161,21 +161,29 @@ export default function TeacherDashboard(){
       return;
     }
     try {
-      await api.post(`/teacher/exams/${exam._id}/questions`, { 
+      const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, { 
         text, 
         options, 
         correctIndex: Number(correctIndex) 
       }); 
+      // Update exam state immediately instead of reloading all exams
+      setExam(data);
       setText(''); 
       setOptions(['','','','']); 
-      setCorrectIndex(0); 
-      await load(); 
+      setCorrectIndex(0);
+      alert('Question added successfully!');
     } catch (error) {
       alert('Failed to add question');
     }
   };
 
   const finalize = async () => { 
+    // Validate that exam has at least 1 question
+    if (!exam || !exam.questions || exam.questions.length === 0) {
+      alert('❌ Cannot finalize exam!\n\nYou must add at least 1 question before finalizing the exam.');
+      return;
+    }
+    
     if (!window.confirm('Are you sure you want to finalize this exam? You won\'t be able to edit it anymore.')) {
       return;
     }

@@ -929,7 +929,7 @@ export default function StudentDashboard(){
                             fontSize: '0.9rem',
                             fontWeight: '600'
                           }}>
-                            ⏳ Results will be available: {result.hideReason}
+                            ⏳ {result.hideReason}
                           </div>
                         </div>
                         <div style={{

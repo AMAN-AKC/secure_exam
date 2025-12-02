@@ -346,7 +346,6 @@ export default function Register(){
           </Card>
         </div>
       </div>
-      </div>
 
       {/* Phone Verification Modal */}
       <Modal

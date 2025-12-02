@@ -361,7 +361,8 @@ export const myResults = async (req, res) => {
         case 'after_exam_ends':
           if (exam.examEndTime) {
             // Fixed schedule exam - check if exam end time has passed
-            resultsAvailable = now >= new Date(exam.examEndTime);
+            // Use getTime() for consistent UTC timestamp comparison
+            resultsAvailable = now.getTime() >= new Date(exam.examEndTime).getTime();
             hideReason = resultsAvailable ? '' : `Results will be available after ${new Date(exam.examEndTime).toLocaleString('en-GB', { hour12: false })}`;
           } else {
             // Flexible exam - results available immediately after submission
@@ -375,15 +376,15 @@ export const myResults = async (req, res) => {
             const examEndTime = exam.examEndTime ? new Date(exam.examEndTime) : new Date(result.submittedAt);
             
             // Results available only after BOTH exam ends AND custom release date
-            resultsAvailable = now >= releaseTime && now >= examEndTime;
+            resultsAvailable = now.getTime() >= releaseTime.getTime() && now.getTime() >= examEndTime.getTime();
             
             if (!resultsAvailable) {
-              const waitUntil = releaseTime > examEndTime ? releaseTime : examEndTime;
+              const waitUntil = releaseTime.getTime() > examEndTime.getTime() ? releaseTime : examEndTime;
               hideReason = `Results will be available on ${waitUntil.toLocaleString('en-GB', { hour12: false })}`;
             }
           } else {
             // Fallback to after exam ends if no custom date set
-            resultsAvailable = exam.examEndTime ? now >= new Date(exam.examEndTime) : true;
+            resultsAvailable = exam.examEndTime ? now.getTime() >= new Date(exam.examEndTime).getTime() : true;
             hideReason = resultsAvailable ? '' : 'Results will be available after the exam ends';
           }
           break;
@@ -465,7 +466,7 @@ export const getDetailedResult = async (req, res) => {
         
       case 'after_exam_ends':
         if (exam.examEndTime) {
-          resultsAvailable = now >= new Date(exam.examEndTime);
+          resultsAvailable = now.getTime() >= new Date(exam.examEndTime).getTime();
           hideReason = resultsAvailable ? '' : `Results will be available after ${new Date(exam.examEndTime).toLocaleString('en-GB', { hour12: false })}`;
         } else {
           resultsAvailable = true;
@@ -477,14 +478,14 @@ export const getDetailedResult = async (req, res) => {
           const releaseTime = new Date(exam.resultsReleaseDate);
           const examEndTime = exam.examEndTime ? new Date(exam.examEndTime) : new Date(result.submittedAt);
           
-          resultsAvailable = now >= releaseTime && now >= examEndTime;
+          resultsAvailable = now.getTime() >= releaseTime.getTime() && now.getTime() >= examEndTime.getTime();
           
           if (!resultsAvailable) {
-            const waitUntil = releaseTime > examEndTime ? releaseTime : examEndTime;
+            const waitUntil = releaseTime.getTime() > examEndTime.getTime() ? releaseTime : examEndTime;
             hideReason = `Results will be available on ${waitUntil.toLocaleString('en-GB', { hour12: false })}`;
           }
         } else {
-          resultsAvailable = exam.examEndTime ? now >= new Date(exam.examEndTime) : true;
+          resultsAvailable = exam.examEndTime ? now.getTime() >= new Date(exam.examEndTime).getTime() : true;
         }
         break;
         

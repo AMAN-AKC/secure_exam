@@ -1,27 +1,58 @@
-﻿import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
-import api from '../api.js';
+import { useNavigate } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  FileText, 
+  BarChart2, 
+  LogOut, 
+  Plus,
+  TrendingUp,
+  BookOpen,
+  Award,
+  Clock,
+  Users
+} from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
-import Button from '../components/Button.jsx';
-import Card from '../components/Card.jsx';
-import Modal from '../components/Modal.jsx';
-import LoadingSpinner from '../components/LoadingSpinner.jsx';
+import api from '../api.js';
+import './TeacherDashboard.css';
 
-export default function TeacherDashboard(){
+export default function TeacherDashboard() {
   const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [exams, setExams] = useState([]);
+  const [stats, setStats] = useState([
+    { label: 'Total Exams', value: '0', icon: FileText, color: '#7c3aed' },
+    { label: 'Active Students', value: '0', icon: Users, color: '#2563eb' },
+    { label: 'Avg Score', value: '0%', icon: TrendingUp, color: '#7c3aed' },
+    { label: 'Completion Rate', value: '0%', icon: Award, color: '#2563eb' },
+  ]);
+  const [chartData, setChartData] = useState([
+    { name: 'Mon', score: 0 },
+    { name: 'Tue', score: 0 },
+    { name: 'Wed', score: 0 },
+    { name: 'Thu', score: 0 },
+    { name: 'Fri', score: 0 },
+  ]);
+  const [summary, setSummary] = useState({
+    activeExams: 0,
+    totalStudents: 0,
+    pendingReviews: 0
+  });
+
+  // Exam creation states
   const [title, setTitle] = useState('');
   const [exam, setExam] = useState(null);
   const [text, setText] = useState('');
   const [options, setOptions] = useState(['','','','']);
   const [correctIndex, setCorrectIndex] = useState(0);
-  const [exams, setExams] = useState([]);
-  const [resultsByExam, setResultsByExam] = useState({});
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
-  const [showResultsModal, setShowResultsModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
-  const [selectedExamResults, setSelectedExamResults] = useState(null);
+  const [showAllExams, setShowAllExams] = useState(false);
   const [examSettings, setExamSettings] = useState({
     title: '',
     description: '',
@@ -38,43 +69,128 @@ export default function TeacherDashboard(){
     resultsReleaseMessage: ''
   });
 
+  // Fetch exams and results data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const examsRes = await api.get('/teacher/exams');
+        const examsData = examsRes.data || [];
+        
+        // Format exams for display
+        const formattedExams = examsData.map(exam => ({
+          id: exam._id,
+          title: exam.title,
+          class: exam.classname || 'General',
+          students: exam.results?.length || 0,
+          date: new Date(exam.examStartTime || exam.availableFrom || exam.createdAt).toLocaleDateString(),
+          duration: `${exam.durationMinutes || 60} mins`,
+          status: getExamStatus(exam.examStartTime, exam.examEndTime)
+        }));
+        
+        // Show only first 3 or all based on showAllExams flag
+        setExams(formattedExams.slice(0, showAllExams ? formattedExams.length : 3));
+
+        // Calculate stats from exams - ALL DYNAMIC DATA
+        const totalExams = examsData.length;
+        const uniqueStudents = new Set();
+        let totalScores = 0;
+        let scoredResults = 0;
+        let passedResults = 0; // Count results with score >= 60 (passing threshold)
+        const PASS_THRESHOLD = 60;
+
+        examsData.forEach(exam => {
+          if (exam.results && exam.results.length > 0) {
+            exam.results.forEach(result => {
+              uniqueStudents.add(result.studentId?._id || result.student);
+              if (result.score !== undefined && result.score !== null) {
+                totalScores += result.score;
+                scoredResults++;
+                if (result.score >= PASS_THRESHOLD) {
+                  passedResults++;
+                }
+              }
+            });
+          }
+        });
+
+        const avgScore = scoredResults > 0 ? Math.round(totalScores / scoredResults) : 0;
+        const passRate = scoredResults > 0 ? Math.round((passedResults / scoredResults) * 100) : 0;
+
+        // Count active exams
+        const activeExams = examsData.filter(exam => getExamStatus(exam.examStartTime, exam.examEndTime) === 'active').length;
+        
+        // Count exams with submissions
+        let examsWithSubmissions = 0;
+        examsData.forEach(exam => {
+          if (exam.results && exam.results.length > 0) {
+            examsWithSubmissions++;
+          }
+        });
+
+        setSummary({
+          activeExams,
+          totalStudents: uniqueStudents.size,
+          pendingReviews: totalExams - examsWithSubmissions
+        });
+
+        setStats([
+          { label: 'Total Exams', value: totalExams.toString(), icon: FileText, color: '#7c3aed' },
+          { label: 'Active Students', value: uniqueStudents.size.toString(), icon: Users, color: '#2563eb' },
+          { label: 'Avg Score', value: `${avgScore}%`, icon: TrendingUp, color: '#7c3aed' },
+          { label: 'Pass Rate', value: `${passRate}%`, icon: Award, color: '#2563eb' },
+        ]);
+
+        // Generate chart data from results - ALL DYNAMIC DATA
+        const weeklyScores = generateWeeklyScores(examsData);
+        setChartData(weeklyScores);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (user) {
+      fetchData();
+    }
+  }, [user, showAllExams]);
+
   // Helper function to calculate missing exam timing values
   const calculateExamTiming = (updates, currentSettings) => {
     const newSettings = { ...currentSettings, ...updates };
-    
+
     // If we have start time and duration, calculate end time
-    if (newSettings.examStartTime && newSettings.durationMinutes && 
+    if (newSettings.examStartTime && newSettings.durationMinutes &&
         (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = startTime.add(newSettings.durationMinutes, 'minute');
       newSettings.examEndTime = endTime.format('YYYY-MM-DDTHH:mm');
     }
-    
+
     // If we have end time and duration, calculate start time
-    else if (newSettings.examEndTime && newSettings.durationMinutes && 
+    else if (newSettings.examEndTime && newSettings.durationMinutes &&
              (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
       const endTime = dayjs(newSettings.examEndTime);
       const startTime = endTime.subtract(newSettings.durationMinutes, 'minute');
       newSettings.examStartTime = startTime.format('YYYY-MM-DDTHH:mm');
     }
-    
+
     // If we have start time and end time, calculate duration
-    else if (newSettings.examStartTime && newSettings.examEndTime && 
+    else if (newSettings.examStartTime && newSettings.examEndTime &&
              (updates.examStartTime || updates.examEndTime)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = dayjs(newSettings.examEndTime);
       const durationMinutes = endTime.diff(startTime, 'minute');
-      
+
       if (durationMinutes > 0) {
         newSettings.durationMinutes = durationMinutes;
       } else {
-        // Invalid time range - end time is before start time
-        // Don't update and show an error
         console.warn('End time cannot be before start time');
-        return currentSettings; // Return unchanged settings
+        return currentSettings;
       }
     }
-    
+
     return newSettings;
   };
 
@@ -83,28 +199,14 @@ export default function TeacherDashboard(){
     setExamSettings(prev => calculateExamTiming(updates, prev));
   };
 
-  const load = async () => { 
-    try {
-      setLoading(true);
-      const { data } = await api.get('/teacher/exams'); 
-      setExams(data); 
-    } catch (error) {
-      console.error('Error loading exams:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  useEffect(() => { load(); }, []);
-
-  const createExam = async () => { 
+  const createExam = async () => {
     if (!title.trim()) return;
     try {
       setSubmitting(true);
-      const { data } = await api.post('/teacher/exams', { title }); 
+      const { data } = await api.post('/teacher/exams', { title });
       setExam(data);
       setExamSettings(prev => ({ ...prev, title, description: '' }));
-      setTitle(''); 
+      setTitle('');
       setShowSettingsModal(true);
     } catch (error) {
       alert('Failed to create exam');
@@ -113,63 +215,20 @@ export default function TeacherDashboard(){
     }
   };
 
-  const updateExamSettings = async () => {
-    if (!exam) return;
-    try {
-      // Convert local datetime-local values to proper ISO strings with timezone
-      const settingsToSend = {
-        ...examSettings,
-        availableFrom: examSettings.availableFrom ? new Date(examSettings.availableFrom).toISOString() : null,
-        availableTo: examSettings.availableTo ? new Date(examSettings.availableTo).toISOString() : null,
-        examStartTime: examSettings.examStartTime ? new Date(examSettings.examStartTime).toISOString() : null,
-        examEndTime: examSettings.examEndTime ? new Date(examSettings.examEndTime).toISOString() : null,
-        resultsReleaseDate: examSettings.resultsReleaseDate ? new Date(examSettings.resultsReleaseDate).toISOString() : null
-      };
-      
-      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
-      setExam(data);
-      setShowSettingsModal(false);
-      setShowQuestionModal(true);
-    } catch (error) {
-      alert('Failed to update exam settings');
-    }
-  };
-
-  const openSettingsModal = (examItem) => {
-    setExam(examItem);
-    setExamSettings({
-      title: examItem.title || '',
-      description: examItem.description || '',
-      durationMinutes: examItem.durationMinutes || 60,
-      availableFrom: examItem.availableFrom ? new Date(examItem.availableFrom).toISOString().slice(0, 16) : '',
-      availableTo: examItem.availableTo ? new Date(examItem.availableTo).toISOString().slice(0, 16) : '',
-      examStartTime: examItem.examStartTime ? new Date(examItem.examStartTime).toISOString().slice(0, 16) : '',
-      examEndTime: examItem.examEndTime ? new Date(examItem.examEndTime).toISOString().slice(0, 16) : '',
-      allowLateEntry: examItem.allowLateEntry || false,
-      shuffleQuestions: examItem.shuffleQuestions || false,
-      showResults: examItem.showResults !== false,
-      resultsReleaseType: examItem.resultsReleaseType || 'after_exam_ends',
-      resultsReleaseDate: examItem.resultsReleaseDate ? new Date(examItem.resultsReleaseDate).toISOString().slice(0, 16) : '',
-      resultsReleaseMessage: examItem.resultsReleaseMessage || ''
-    });
-    setShowSettingsModal(true);
-  };
-
-  const addQuestion = async () => { 
+  const addQuestion = async () => {
     if (!text.trim() || options.some(opt => !opt.trim())) {
       alert('Please fill in all fields');
       return;
     }
     try {
-      const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, { 
-        text, 
-        options, 
-        correctIndex: Number(correctIndex) 
-      }); 
-      // Update exam state immediately instead of reloading all exams
+      const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
+        text,
+        options,
+        correctIndex: Number(correctIndex)
+      });
       setExam(data);
-      setText(''); 
-      setOptions(['','','','']); 
+      setText('');
+      setOptions(['','','','']);
       setCorrectIndex(0);
       alert('Question added successfully!');
     } catch (error) {
@@ -177,622 +236,819 @@ export default function TeacherDashboard(){
     }
   };
 
-  const finalize = async () => { 
-    // Validate that exam has at least 1 question
+  const finalize = async () => {
     if (!exam || !exam.questions || exam.questions.length === 0) {
       alert('❌ Cannot finalize exam!\n\nYou must add at least 1 question before finalizing the exam.');
       return;
     }
-    
+
     if (!window.confirm('Are you sure you want to finalize this exam? You won\'t be able to edit it anymore.')) {
       return;
     }
     try {
-      await api.post(`/teacher/exams/${exam._id}/finalize`); 
-      setExam(null); 
+      await api.post(`/teacher/exams/${exam._id}/finalize`);
+      setExam(null);
       setShowQuestionModal(false);
-      await load(); 
-      alert('Exam finalized and sent to admin for approval!\n\nYour exam is now pending admin approval. Once approved, students will be able to register.');
+      setShowSettingsModal(false);
+      alert('Exam finalized and sent to admin for approval!');
+      // Reload exams
+      const { data } = await api.get('/teacher/exams');
+      setExams(data.slice(0, 3).map(e => ({
+        id: e._id,
+        title: e.title,
+        class: e.classname || 'General',
+        students: e.results?.length || 0,
+        date: new Date(e.examStartTime || e.availableFrom || e.createdAt).toLocaleDateString(),
+        duration: `${e.durationMinutes || 60} mins`,
+        status: getExamStatus(e.examStartTime, e.examEndTime)
+      })));
     } catch (error) {
       alert('Failed to finalize exam');
     }
   };
 
-  const fetchResults = async (examId, examTitle) => {
-    try {
-      const { data } = await api.get(`/teacher/exams/${examId}/results`);
-      setResultsByExam(prev => ({ ...prev, [examId]: data }));
-      setSelectedExamResults({ examId, examTitle, results: data });
-      setShowResultsModal(true);
-    } catch (error) {
-      alert('Failed to fetch results');
-    }
+  const getExamStatus = (startTime, endTime) => {
+    const now = new Date();
+    const start = startTime ? new Date(startTime) : null;
+    const end = endTime ? new Date(endTime) : null;
+
+    if (!start && !end) return 'draft';
+    if (start && now < start) return 'scheduled';
+    if (end && now > end) return 'completed';
+    return 'active';
   };
 
-  const openQuestionModal = () => {
-    setShowQuestionModal(true);
+  const generateWeeklyScores = (examsData) => {
+    // Get current week start date (Monday)
+    const now = new Date();
+    const currentDay = now.getDay();
+    const diff = now.getDate() - currentDay + (currentDay === 0 ? -6 : 1); // Adjust for Sunday
+    const weekStart = new Date(now.setDate(diff));
+    weekStart.setHours(0, 0, 0, 0);
+
+    const scores = [
+      { name: 'Mon', score: 0, count: 0, date: new Date(weekStart) },
+      { name: 'Tue', score: 0, count: 0, date: new Date(weekStart.getTime() + 86400000) },
+      { name: 'Wed', score: 0, count: 0, date: new Date(weekStart.getTime() + 172800000) },
+      { name: 'Thu', score: 0, count: 0, date: new Date(weekStart.getTime() + 259200000) },
+      { name: 'Fri', score: 0, count: 0, date: new Date(weekStart.getTime() + 345600000) },
+    ];
+
+    // Process each exam result and assign to the day it was submitted/created
+    examsData.forEach(exam => {
+      if (exam.results && exam.results.length > 0) {
+        exam.results.forEach(result => {
+          // Use submission date if available, otherwise use exam date
+          const resultDate = result.submittedAt ? new Date(result.submittedAt) : new Date(exam.createdAt);
+          resultDate.setHours(0, 0, 0, 0);
+
+          // Find which day of the current week this result belongs to
+          const dayDiff = Math.floor((resultDate - weekStart) / 86400000);
+          
+          if (dayDiff >= 0 && dayDiff < 5) {
+            if (result.score !== undefined && result.score !== null) {
+              scores[dayDiff].score += result.score;
+              scores[dayDiff].count += 1;
+            }
+          }
+        });
+      }
+    });
+
+    return scores.map(day => ({
+      name: day.name,
+      score: day.count > 0 ? Math.round(day.score / day.count) : 0
+    }));
   };
 
-  const closeQuestionModal = () => {
-    setShowQuestionModal(false);
-    if (exam && exam.questions.length === 0) {
-      setExam(null); // Close draft if no questions added
-    }
-  };
-
-  const currentQuestionNumber = (exam && exam.questions ? exam.questions.length + 1 : (exams.find(e=>e._id===exam?._id)?.questions?.length || 0) + 1);
-
-  if (loading) {
-    return (
-      <div className="container">
-        <LoadingSpinner size="large" />
-      </div>
-    );
-  }
+  const navItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'exams', label: 'Exams', icon: FileText },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+    { id: 'history', label: 'History', icon: Clock },
+  ];
 
   return (
-    <div className="container stack">
-      {/* Header */}
-      <Card
-        title="Teacher Dashboard"
-        subtitle={`Welcome back, ${user?.name || user?.email} (${user?.role?.toUpperCase()})`}
-        variant="gradient"
-        headerAction={
-          <Button variant="secondary" onClick={logout}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Logout
-          </Button>
-        }
-      >
-        <div className="flex gap-4">
-          <div className="progress-stat">
-            <div className="progress-stat-number">{exams.length}</div>
-            <div className="progress-stat-label">Total Exams</div>
+    <div className="dashboard-container">
+      {/* Sidebar */}
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <div style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+              padding: '0.75rem',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <BookOpen size={24} color="white" />
+            </div>
+            <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1a103c' }}>SecureExam</span>
           </div>
-          <div className="progress-stat">
-            <div className="progress-stat-number">{exams.filter(e => e.status === 'draft').length}</div>
-            <div className="progress-stat-label">Drafts</div>
-          </div>
-          <div className="progress-stat">
-            <div className="progress-stat-number">{exams.filter(e => e.status === 'pending').length}</div>
-            <div className="progress-stat-label">Pending Approval</div>
-          </div>
-          <div className="progress-stat">
-            <div className="progress-stat-number">{exams.filter(e => e.status === 'approved').length}</div>
-            <div className="progress-stat-label">Active</div>
-          </div>
+          {user && (
+            <div style={{
+              marginTop: '1rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid #e5e7eb',
+              fontSize: '0.875rem'
+            }}>
+              <p style={{ color: '#6b7280', marginBottom: '0.25rem' }}>Welcome back,</p>
+              <p style={{ fontWeight: '700', color: '#1f2937' }}>{user.name || user.email}</p>
+            </div>
+          )}
         </div>
-      </Card>
 
-      {/* Quick Actions */}
-      <Card
-        title="Quick Actions"
-        subtitle="Create and manage your examinations"
-      >
-        <div className="flex gap-4 items-end">
-          <div className="flex-1">
-            <label className="form-label">Exam Title</label>
-            <input 
-              className="input" 
-              placeholder="Enter exam title..." 
-              value={title} 
-              onChange={(e) => setTitle(e.target.value)}
-              onKeyPress={(e) => e.key === 'Enter' && createExam()}
-            />
-          </div>
-          <Button 
-            variant="primary" 
-            loading={submitting}
-            onClick={createExam}
-            disabled={!title.trim()}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-              <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Create Exam
-          </Button>
+        <nav className="sidebar-nav">
+          {navItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => {
+                  setActiveNav(item.id);
+                  if (item.id === 'dashboard') navigate('/teacher');
+                  if (item.id === 'exams') navigate('/teacher/exams');
+                  if (item.id === 'analytics') navigate('/teacher/analytics');
+                  if (item.id === 'history') navigate('/teacher/history');
+                }}
+                className={`nav-item ${activeNav === item.id ? 'active' : ''}`}
+              >
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
+
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={logout}>
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
         </div>
-      </Card>
+      </aside>
 
-      {/* My Exams */}
-      <Card
-        title="My Examinations"
-        subtitle="Manage and track your created exams"
-      >
-        {exams.length === 0 ? (
-          <div className="text-center py-8 text-muted">
-            <div className="mb-4 text-4xl">📝</div>
-            <p>No exams created yet. Create your first exam to get started!</p>
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {exams.map(examItem => {
-              const statusColors = {
-                draft: 'badge-warning',
-                pending: 'badge-primary', 
-                approved: 'badge-success',
-                rejected: 'badge-danger',
-                expired: 'badge-secondary'
-              };
-              
+      {/* Main Content */}
+      <main className="dashboard-main">
+        {/* Content */}
+        <div className="dashboard-content">
+          {loading ? (
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', fontSize: '1.125rem', color: '#6b7280' }}>
+              Loading dashboard...
+            </div>
+          ) : (
+            <>
+            {/* Stats Grid */}
+            <div className="stats-grid">
+            {stats.map((stat, idx) => {
+              const Icon = stat.icon;
               return (
-                <div key={examItem._id} className="border border-border rounded-lg p-4 hover:border-brand transition-colors">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-semibold text-lg mb-1">{examItem.title}</h4>
-                      <div className="flex items-center gap-4 text-sm text-muted">
-                        <span>📊 Questions: {examItem.questions?.length || 0}</span>
-                        <span>⏱️ Duration: {examItem.durationMinutes || 60}min</span>
-                        <span>📅 Created: {dayjs(examItem.createdAt).format('MMM DD, YYYY')}</span>
-                        <span className={`badge ${statusColors[examItem.status]}`}>
-                          {examItem.status.toUpperCase()}
-                        </span>
-                      </div>
-                      {examItem.description && (
-                        <p className="text-sm text-muted mt-2">{examItem.description}</p>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      {examItem.status === 'draft' && (
-                        <>
-                          <Button 
-                            variant="outline" 
-                            size="small"
-                            onClick={() => openSettingsModal(examItem)}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2"/>
-                              <path d="M12 1v6M12 17v6M4.22 4.22l4.24 4.24M15.54 15.54l4.24 4.24M1 12h6M17 12h6M4.22 19.78l4.24-4.24M15.54 8.46l4.24-4.24" stroke="currentColor" strokeWidth="2"/>
-                            </svg>
-                            Settings
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="small"
-                            onClick={() => {
-                              setExam(examItem);
-                              openQuestionModal();
-                            }}
-                          >
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                              <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                              <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                            </svg>
-                            Questions
-                          </Button>
-                        </>
-                      )}
-                      <Button 
-                        variant="secondary" 
-                        size="small"
-                        onClick={() => fetchResults(examItem._id, examItem.title)}
-                      >
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
-                          <path d="M9 17H7A5 5 0 017 7h2m0 10v-5a5 5 0 011-3m0 8h2a5 5 0 005-5v-2a5 5 0 00-1-3m-4 10v-5a5 5 0 011-3" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Results
-                      </Button>
-                    </div>
+                <div key={idx} className="stat-card" style={{ borderLeftColor: stat.color }}>
+                  <div className="stat-icon" style={{ color: stat.color }}>
+                    <Icon size={24} />
                   </div>
-                  
-                  {examItem.questions && examItem.questions.length > 0 && (
-                    <div className="text-sm text-muted">
-                      Recent questions: {examItem.questions.slice(0, 2).map(q => q.text).join(', ')}
-                      {examItem.questions.length > 2 && '...'}
-                    </div>
-                  )}
+                  <div className="stat-info">
+                    <p className="stat-label">{stat.label}</p>
+                    <p className="stat-value">{stat.value}</p>
+                  </div>
                 </div>
               );
             })}
           </div>
-        )}
-      </Card>
 
-      {/* Question Creation Modal */}
-      <Modal
-        isOpen={showQuestionModal}
-        onClose={closeQuestionModal}
-        title={`Add Questions to: ${exam?.title}`}
-        size="large"
-      >
-        {exam && (
-          <div className="space-y-6">
-            <div className="bg-panel-light p-4 rounded-lg">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-semibold">Current Progress</span>
-                <span className="text-sm text-muted">Question #{currentQuestionNumber}</span>
-              </div>
-              <div className="text-sm text-muted">
-                {exam.questions?.length || 0} questions added
-              </div>
-            </div>
+          {/* Main Grid */}
+          <div className="content-grid">
+            {/* Left Column */}
+            <div className="grid-left">
+              {/* Upcoming Exams */}
+              <div className="card">
+                <div className="card-header">
+                  <h2>Upcoming Exams</h2>
+                  <button 
+                    onClick={() => setShowAllExams(!showAllExams)}
+                    style={{ color: '#7c3aed', fontSize: '0.875rem', fontWeight: '600', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                    {showAllExams ? '← Show Less' : 'View All →'}
+                  </button>
+                </div>
 
-            <div className="form-group">
-              <label className="form-label">Question Text</label>
-              <textarea 
-                className="input" 
-                placeholder="Enter your question..." 
-                value={text} 
-                onChange={(e) => setText(e.target.value)}
-                rows={3}
-                style={{ resize: 'vertical', minHeight: '80px' }}
-              />
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Answer Options</label>
-              <div className="space-y-3">
-                {options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 border-2 rounded-full text-sm font-semibold" 
-                         style={{ 
-                           borderColor: correctIndex === index ? 'var(--success)' : 'var(--border)',
-                           backgroundColor: correctIndex === index ? 'var(--success-light)' : 'transparent',
-                           color: correctIndex === index ? 'var(--success)' : 'var(--text-secondary)'
-                         }}>
-                      {String.fromCharCode(65 + index)}
+                <div className="exams-list">
+                  {exams.map((exam) => (
+                    <div key={exam.id} className="exam-card">
+                      <div className="exam-content">
+                        <h3>{exam.title}</h3>
+                        <p className="exam-class">{exam.class} • {exam.students} Students</p>
+                        <div className="exam-meta">
+                          <span className="exam-time">📅 {exam.date}</span>
+                          <span className="exam-duration">⏱️ {exam.duration}</span>
+                        </div>
+                      </div>
+                      <span className={`status-badge status-${exam.status}`}>{exam.status}</span>
                     </div>
-                    <input 
-                      className="input flex-1" 
-                      placeholder={`Option ${index + 1}`} 
-                      value={option} 
-                      onChange={(e) => {
-                        const newOptions = [...options];
-                        newOptions[index] = e.target.value;
-                        setOptions(newOptions);
-                      }} 
-                    />
-                    <Button
-                      variant={correctIndex === index ? "success" : "outline"}
-                      size="small"
-                      onClick={() => setCorrectIndex(index)}
-                    >
-                      {correctIndex === index ? "✓ Correct" : "Mark Correct"}
-                    </Button>
-                  </div>
-                ))}
+                  ))}
+                </div>
+              </div>
+
+              {/* Create Exam CTA */}
+              <div className="cta-card" style={{
+                background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                color: 'white',
+                padding: '2rem',
+                borderRadius: '1.5rem',
+                textAlign: 'center'
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <Plus size={40} style={{ margin: '0 auto', marginBottom: '1rem' }} />
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>Create New Exam</h3>
+                  <p style={{ opacity: 0.9 }}>Build and launch your next assessment in minutes</p>
+                </div>
+                <button style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }} onClick={() => setShowQuestionModal(true)}>
+                  Get Started
+                </button>
               </div>
             </div>
 
-            <div className="flex justify-between items-center pt-4 border-t border-border">
-              <div className="text-sm text-muted">
-                {exam.questions?.length || 0} questions added so far
+            {/* Right Column */}
+            <div className="grid-right">
+              {/* Analytics Card */}
+              <div className="card analytics-card">
+                <div className="card-header">
+                  <h2>Performance Analytics</h2>
+                </div>
+
+                <div className="analytics-content">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#9ca3af" />
+                      <YAxis stroke="#9ca3af" />
+                      <Tooltip 
+                        contentStyle={{
+                          background: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem'
+                        }}
+                      />
+                      <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+
+                <div className="analytics-stats">
+                  <div className="analytics-stat">
+                    <p>Avg Score</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[2].value}</p>
+                  </div>
+                  <div className="analytics-stat">
+                    <p>Pass Rate</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#2563eb' }}>{stats[3].value}</p>
+                  </div>
+                  <div className="analytics-stat">
+                    <p>Total Exams</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[0].value}</p>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-3">
-                <Button variant="secondary" onClick={closeQuestionModal}>
-                  Close
-                </Button>
-                <Button 
-                  variant="primary" 
-                  onClick={addQuestion}
-                  disabled={!text.trim() || options.some(opt => !opt.trim())}
-                >
-                  Add Question
-                </Button>
-                {(exam.questions?.length || 0) > 0 && (
-                  <Button variant="success" onClick={finalize}>
-                    Finalize Exam
-                  </Button>
-                )}
+
+              {/* Summary Card */}
+              <div className="card">
+                <div className="card-header">
+                  <h2>Quick Summary</h2>
+                </div>
+                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Active Exams</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.activeExams}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Total Students</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2563eb' }}>{summary.totalStudents}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Pending Reviews</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.pendingReviews}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </Modal>
+            </>
+          )}
+        </div>
+      </main>
 
-      {/* Results Modal */}
-      <Modal
-        isOpen={showResultsModal}
-        onClose={() => setShowResultsModal(false)}
-        title={`Results for: ${selectedExamResults?.examTitle}`}
-        size="large"
-      >
-        {selectedExamResults && (
-          <div>
-            {selectedExamResults.results.length === 0 ? (
-              <div className="text-center py-8 text-muted">
-                <div className="mb-4 text-4xl">📊</div>
-                <p>No submissions yet for this exam.</p>
+      {/* Create Exam Modal */}
+      {showQuestionModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '2rem',
+            maxWidth: '600px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>Create New Exam</h2>
+
+            {!exam ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Exam Title</label>
+                  <input
+                    type="text"
+                    placeholder="Enter exam title..."
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && createExam()}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
+                  <button
+                    onClick={() => setShowQuestionModal(false)}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      background: 'white',
+                      color: '#374151'
+                    }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={createExam}
+                    disabled={!title.trim()}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      background: '#7c3aed',
+                      color: 'white',
+                      border: 'none',
+                      opacity: title.trim() ? 1 : 0.5
+                    }}
+                  >
+                    Create Exam
+                  </button>
+                </div>
               </div>
             ) : (
-              <div className="space-y-4">
-                <div className="bg-panel-light p-4 rounded-lg">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <div className="text-2xl font-bold text-brand">{selectedExamResults.results.length}</div>
-                      <div className="text-sm text-muted">Total Submissions</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-success">
-                        {Math.round(selectedExamResults.results.reduce((acc, r) => acc + (r.score / r.total * 100), 0) / selectedExamResults.results.length)}%
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{ background: '#f3f4f6', padding: '1rem', borderRadius: '0.5rem' }}>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280', marginBottom: '0.5rem' }}>Exam: {exam.title}</div>
+                  <div style={{ fontSize: '0.875rem', color: '#6b7280' }}>{exam.questions?.length || 0} questions added</div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Question Text</label>
+                  <textarea
+                    placeholder="Enter your question..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    rows={3}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical',
+                      minHeight: '80px'
+                    }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.75rem' }}>Answer Options</label>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {options.map((option, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+                        <button
+                          onClick={() => setCorrectIndex(index)}
+                          style={{
+                            width: '32px',
+                            height: '32px',
+                            borderRadius: '50%',
+                            border: `2px solid ${correctIndex === index ? '#7c3aed' : '#e5e7eb'}`,
+                            background: correctIndex === index ? '#f3e8ff' : 'transparent',
+                            color: correctIndex === index ? '#7c3aed' : '#9ca3af',
+                            fontSize: '0.875rem',
+                            fontWeight: '600',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          {String.fromCharCode(65 + index)}
+                        </button>
+                        <input
+                          type="text"
+                          placeholder={`Option ${index + 1}`}
+                          value={option}
+                          onChange={(e) => {
+                            const newOptions = [...options];
+                            newOptions[index] = e.target.value;
+                            setOptions(newOptions);
+                          }}
+                          style={{
+                            flex: 1,
+                            padding: '0.75rem',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '0.5rem',
+                            fontSize: '1rem'
+                          }}
+                        />
                       </div>
-                      <div className="text-sm text-muted">Average Score</div>
-                    </div>
-                    <div>
-                      <div className="text-2xl font-bold text-warning">
-                        {Math.max(...selectedExamResults.results.map(r => r.score / r.total * 100)).toFixed(0)}%
-                      </div>
-                      <div className="text-sm text-muted">Highest Score</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {selectedExamResults.results.map(result => {
-                    const percentage = Math.round((result.score / result.total) * 100);
-                    const grade = percentage >= 90 ? 'A' : percentage >= 80 ? 'B' : percentage >= 70 ? 'C' : percentage >= 60 ? 'D' : 'F';
-                    const badgeVariant = percentage >= 70 ? 'badge-success' : percentage >= 60 ? 'badge-warning' : 'badge-danger';
-                    
-                    return (
-                      <div key={result.id} className="flex items-center justify-between p-4 border border-border rounded-lg">
-                        <div>
-                          <h4 className="font-semibold">{result.student?.name || result.student?.email}</h4>
-                          <div className="text-sm text-muted">{result.student?.email}</div>
-                        </div>
-                        <div className="text-right">
-                          <div className="flex items-center gap-3">
-                            <div>
-                              <div className="font-semibold">{result.score}/{result.total}</div>
-                              <div className="text-sm text-muted">{percentage}%</div>
-                            </div>
-                            <span className={`badge ${badgeVariant}`}>{grade}</span>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                  <button
+                    onClick={() => {
+                      setExam(null);
+                      setText('');
+                      setOptions(['','','','']);
+                      setCorrectIndex(0);
+                    }}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      background: 'white',
+                      color: '#374151'
+                    }}
+                  >
+                    Go Back
+                  </button>
+                  <button
+                    onClick={addQuestion}
+                    disabled={!text.trim() || options.some(opt => !opt.trim())}
+                    style={{
+                      padding: '0.75rem 1.5rem',
+                      borderRadius: '0.5rem',
+                      cursor: 'pointer',
+                      background: '#7c3aed',
+                      color: 'white',
+                      border: 'none',
+                      opacity: text.trim() && !options.some(opt => !opt.trim()) ? 1 : 0.5
+                    }}
+                  >
+                    Add Question
+                  </button>
+                  {(exam.questions?.length || 0) > 0 && (
+                    <button
+                      onClick={finalize}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        background: '#10b981',
+                        color: 'white',
+                        border: 'none'
+                      }}
+                    >
+                      Finalize Exam
+                    </button>
+                  )}
                 </div>
               </div>
             )}
           </div>
-        )}
-      </Modal>
+        </div>
+      )}
 
-      {/* Exam Settings Modal */}
-      <Modal
-        isOpen={showSettingsModal}
-        onClose={() => setShowSettingsModal(false)}
-        title={`Exam Settings: ${examSettings.title}`}
-        size="large"
-      >
-        <div className="space-y-6">
-          {/* Basic Information */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Basic Information</h3>
-            
-            <div className="form-group">
-              <label className="form-label">Exam Title</label>
-              <input 
-                className="input" 
-                value={examSettings.title} 
-                onChange={(e) => setExamSettings(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Enter exam title..."
-              />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Description (Optional)</label>
-              <textarea 
-                className="input" 
-                value={examSettings.description} 
-                onChange={(e) => setExamSettings(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Describe the exam content, instructions, or requirements..."
-                rows={3}
-              />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">Exam Duration (Minutes)</label>
-              <input 
-                className="input" 
-                type="number"
-                min="5"
-                max="300"
-                value={examSettings.durationMinutes} 
-                onChange={(e) => setExamSettingsWithCalculation({ durationMinutes: Number(e.target.value) })}
-              />
-              <div className="text-sm text-muted mt-1">
-                How long students have to complete the exam (5-300 minutes)
-                {examSettings.examStartTime && examSettings.examEndTime && (
-                  <span className="text-success"> • Auto-calculated from start/end times</span>
-                )}
-              </div>
-            </div>
-          </div>
+      {/* Settings Modal - Exam Timing Configuration */}
+      {showSettingsModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50
+        }}>
+          <div style={{
+            background: 'white',
+            borderRadius: '1rem',
+            padding: '2rem',
+            maxWidth: '700px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflowY: 'auto'
+          }}>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1.5rem' }}>Exam Settings & Timing</h2>
 
-          {/* Availability Schedule */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Availability Schedule</h3>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Available From</label>
-                <input 
-                  className="input" 
-                  type="datetime-local"
-                  value={examSettings.availableFrom} 
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, availableFrom: e.target.value }))}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Exam Title</label>
+                <input
+                  type="text"
+                  value={examSettings.title}
+                  onChange={(e) => setExamSettingsWithCalculation({ title: e.target.value })}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem'
+                  }}
                 />
-                <div className="text-sm text-muted mt-1">When students can start registering</div>
               </div>
-              
-              <div className="form-group">
-                <label className="form-label">Available Until</label>
-                <input 
-                  className="input" 
-                  type="datetime-local"
-                  value={examSettings.availableTo} 
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, availableTo: e.target.value }))}
-                />
-                <div className="text-sm text-muted mt-1">Registration deadline</div>
-              </div>
-            </div>
-          </div>
 
-          {/* Fixed Schedule (Optional) */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Fixed Schedule (Optional)</h3>
-            <div className="text-sm text-muted mb-3">
-              If set, all students must take the exam at the same time. Leave empty for flexible scheduling.
-              <div className="mt-2 p-3 bg-brand-light rounded-lg text-brand">
-                <div className="font-medium">💡 Smart Timing</div>
-                Enter any two values (duration, start time, or end time) and the third will be calculated automatically.
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="form-group">
-                <label className="form-label">Exam Start Time</label>
-                <input 
-                  className="input" 
-                  type="datetime-local"
-                  value={examSettings.examStartTime} 
-                  onChange={(e) => setExamSettingsWithCalculation({ examStartTime: e.target.value })}
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Description</label>
+                <textarea
+                  value={examSettings.description}
+                  onChange={(e) => setExamSettingsWithCalculation({ description: e.target.value })}
+                  rows={3}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    fontSize: '1rem',
+                    fontFamily: 'inherit',
+                    resize: 'vertical'
+                  }}
                 />
-                <div className="text-sm text-muted mt-1">
-                  When the exam begins
-                  {examSettings.examEndTime && examSettings.durationMinutes && !examSettings.examStartTime && (
-                    <span className="text-success"> • Will be calculated from end time and duration</span>
-                  )}
+              </div>
+
+              {/* Timing Section */}
+              <div style={{ background: '#f3f4f6', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#1f2937' }}>Exam Timing</h3>
+
+                {/* Duration */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Duration (minutes)</label>
+                  <input
+                    type="number"
+                    value={examSettings.durationMinutes}
+                    onChange={(e) => setExamSettingsWithCalculation({ durationMinutes: Number(e.target.value) })}
+                    min="1"
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
                 </div>
-              </div>
-              
-              <div className="form-group">
-                <label className="form-label">Exam End Time</label>
-                <input 
-                  className="input" 
-                  type="datetime-local"
-                  value={examSettings.examEndTime} 
-                  onChange={(e) => setExamSettingsWithCalculation({ examEndTime: e.target.value })}
-                />
-                <div className="text-sm text-muted mt-1">
-                  When the exam ends
-                  {examSettings.examStartTime && examSettings.durationMinutes && !examSettings.examEndTime && (
-                    <span className="text-success"> • Will be calculated from start time and duration</span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
 
-          {/* Exam Options */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-border pb-2">Exam Options</h3>
-            
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox"
-                  checked={examSettings.allowLateEntry}
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, allowLateEntry: e.target.checked }))}
-                  className="w-4 h-4"
-                />
+                {/* Exam Start Time */}
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Exam Start Time</label>
+                  <input
+                    type="datetime-local"
+                    value={examSettings.examStartTime}
+                    onChange={(e) => setExamSettingsWithCalculation({ examStartTime: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+
+                {/* Exam End Time */}
                 <div>
-                  <div className="font-medium">Allow Late Entry</div>
-                  <div className="text-sm text-muted">Students can join up to 15 minutes after scheduled start</div>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Exam End Time</label>
+                  <input
+                    type="datetime-local"
+                    value={examSettings.examEndTime}
+                    onChange={(e) => setExamSettingsWithCalculation({ examEndTime: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                  <p style={{ fontSize: '0.75rem', color: '#6b7280', marginTop: '0.5rem' }}>
+                    💡 Tip: Fill in any 2 of (Start Time, End Time, Duration) and the third will auto-calculate
+                  </p>
                 </div>
-              </label>
-              
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox"
-                  checked={examSettings.shuffleQuestions}
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, shuffleQuestions: e.target.checked }))}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <div className="font-medium">Shuffle Questions</div>
-                  <div className="text-sm text-muted">Randomize question order for each student</div>
-                </div>
-              </label>
-              
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input 
-                  type="checkbox"
-                  checked={examSettings.showResults}
-                  onChange={(e) => setExamSettings(prev => ({ ...prev, showResults: e.target.checked }))}
-                  className="w-4 h-4"
-                />
-                <div>
-                  <div className="font-medium">Show Results to Students</div>
-                  <div className="text-sm text-muted">Students can see their scores after submission</div>
-                </div>
-              </label>
-            </div>
-          </div>
+              </div>
 
-          {/* Result Release Settings */}
-          {examSettings.showResults && (
-            <div>
-              <h3 className="text-lg font-semibold border-b border-border pb-2">Result Release Settings</h3>
-              <div className="space-y-4">
+              {/* Availability Section */}
+              <div style={{ background: '#f3f4f6', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#1f2937' }}>Availability</h3>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Available From</label>
+                  <input
+                    type="datetime-local"
+                    value={examSettings.availableFrom}
+                    onChange={(e) => setExamSettingsWithCalculation({ availableFrom: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+
                 <div>
-                  <label className="form-label">When should results be visible?</label>
-                  <select 
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Available To</label>
+                  <input
+                    type="datetime-local"
+                    value={examSettings.availableTo}
+                    onChange={(e) => setExamSettingsWithCalculation({ availableTo: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Options Section */}
+              <div style={{ background: '#f3f4f6', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#1f2937' }}>Options</h3>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={examSettings.allowLateEntry}
+                    onChange={(e) => setExamSettingsWithCalculation({ allowLateEntry: e.target.checked })}
+                    id="allowLateEntry"
+                  />
+                  <label htmlFor="allowLateEntry" style={{ fontSize: '0.875rem' }}>Allow Late Entry</label>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={examSettings.shuffleQuestions}
+                    onChange={(e) => setExamSettingsWithCalculation({ shuffleQuestions: e.target.checked })}
+                    id="shuffleQuestions"
+                  />
+                  <label htmlFor="shuffleQuestions" style={{ fontSize: '0.875rem' }}>Shuffle Questions</label>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <input
+                    type="checkbox"
+                    checked={examSettings.showResults}
+                    onChange={(e) => setExamSettingsWithCalculation({ showResults: e.target.checked })}
+                    id="showResults"
+                  />
+                  <label htmlFor="showResults" style={{ fontSize: '0.875rem' }}>Show Results to Students</label>
+                </div>
+              </div>
+
+              {/* Results Release */}
+              <div style={{ background: '#f3f4f6', padding: '1.5rem', borderRadius: '0.75rem' }}>
+                <h3 style={{ fontSize: '1rem', fontWeight: '700', marginBottom: '1rem', color: '#1f2937' }}>Results Release</h3>
+
+                <div style={{ marginBottom: '1rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Release Type</label>
+                  <select
                     value={examSettings.resultsReleaseType}
-                    onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseType: e.target.value }))}
-                    className="input w-full"
+                    onChange={(e) => setExamSettingsWithCalculation({ resultsReleaseType: e.target.value })}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem'
+                    }}
                   >
-                    <option value="immediate">Immediately after submission</option>
-                    <option value="after_exam_ends">After exam ends</option>
-                    <option value="custom_date">Custom date and time</option>
+                    <option value="after_exam_ends">After Exam Ends</option>
+                    <option value="on_date">On Specific Date</option>
+                    <option value="manual">Manual Release</option>
                   </select>
-                  <div className="text-sm text-muted mt-1">
-                    {examSettings.resultsReleaseType === 'immediate' && 'Students see results right after they submit'}
-                    {examSettings.resultsReleaseType === 'after_exam_ends' && 'Students see results only after the exam end time'}
-                    {examSettings.resultsReleaseType === 'custom_date' && 'Students see results at the date/time you specify'}
-                  </div>
                 </div>
 
-                {examSettings.resultsReleaseType === 'custom_date' && (
-                  <div>
-                    <label className="form-label">Results Release Date & Time</label>
-                    <input 
+                {examSettings.resultsReleaseType === 'on_date' && (
+                  <div style={{ marginBottom: '1rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Release Date</label>
+                    <input
                       type="datetime-local"
                       value={examSettings.resultsReleaseDate}
-                      onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseDate: e.target.value }))}
-                      className="input w-full"
+                      onChange={(e) => setExamSettingsWithCalculation({ resultsReleaseDate: e.target.value })}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '0.5rem',
+                        fontSize: '1rem'
+                      }}
                     />
-                    <div className="text-sm text-muted mt-1">
-                      Results will be visible after both this date/time AND the exam ends
-                    </div>
                   </div>
                 )}
 
                 <div>
-                  <label className="form-label">Result Release Message (Optional)</label>
-                  <textarea 
+                  <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Release Message</label>
+                  <textarea
                     value={examSettings.resultsReleaseMessage}
-                    onChange={(e) => setExamSettings(prev => ({ ...prev, resultsReleaseMessage: e.target.value }))}
-                    placeholder="Optional message to show with results (e.g., 'Great job on completing the exam!')"
-                    className="input w-full resize-vertical min-h-20"
-                    rows={3}
+                    onChange={(e) => setExamSettingsWithCalculation({ resultsReleaseMessage: e.target.value })}
+                    rows={2}
+                    style={{
+                      width: '100%',
+                      padding: '0.75rem',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '0.5rem',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                      resize: 'vertical'
+                    }}
                   />
-                  <div className="text-sm text-muted mt-1">
-                    This message will be displayed when students view their results
-                  </div>
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border">
-            <Button variant="secondary" onClick={() => setShowSettingsModal(false)}>
-              Cancel
-            </Button>
-            <Button 
-              variant="primary" 
-              onClick={updateExamSettings}
-              disabled={!examSettings.title.trim()}
-            >
-              Save Settings
-            </Button>
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+                <button
+                  onClick={() => setShowSettingsModal(false)}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    background: 'white',
+                    color: '#374151'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      setSubmitting(true);
+                      const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, examSettings);
+                      setExam(data);
+                      setShowSettingsModal(false);
+                      setShowQuestionModal(true);
+                      alert('Exam settings saved! Now add your questions.');
+                    } catch (error) {
+                      alert('Failed to save exam settings');
+                    } finally {
+                      setSubmitting(false);
+                    }
+                  }}
+                  disabled={submitting}
+                  style={{
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.5rem',
+                    cursor: 'pointer',
+                    background: '#7c3aed',
+                    color: 'white',
+                    border: 'none',
+                    opacity: submitting ? 0.5 : 1
+                  }}
+                >
+                  {submitting ? 'Saving...' : 'Save & Continue'}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
-      </Modal>
+      )}
     </div>
   );
 }

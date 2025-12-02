@@ -1,5 +1,9 @@
 /* Landing Page - Deep Violet/Indigo Theme */
 
+.container {
+  padding: 0;
+}
+
 .landing-wrapper {
   width: 100%;
   margin: 0;
@@ -18,12 +22,13 @@
   left: 0;
   right: 0;
   z-index: 50;
-  padding: 1rem 2rem;
+  padding: 1rem 0;
 }
 
 .landing-nav-content {
   max-width: 1400px;
   margin: 0 auto;
+  padding: 0 2rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -48,7 +53,7 @@
 .landing-logo-text {
   font-size: 1.25rem;
   font-weight: 700;
-  color: white;
+  color: #7c3aed;
   letter-spacing: -0.5px;
 }
 
@@ -59,7 +64,7 @@
 }
 
 .landing-nav-link {
-  color: white;
+  color: #7c3aed;
   text-decoration: none;
   font-weight: 500;
   font-size: 0.875rem;
@@ -72,9 +77,9 @@
 }
 
 .landing-nav-btn {
-  background: rgba(255, 255, 255, 0.1);
+  background: #7c3aed;
   backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid #7c3aed;
   color: white;
   padding: 0.5rem 1rem;
   border-radius: 0.5rem;
@@ -97,7 +102,7 @@
   position: relative;
   background: #1a103c;
   color: white;
-  padding: 8rem 2rem 6rem;
+  padding: 5rem 2rem 6rem;
   overflow: hidden;
   min-height: 100vh;
   display: flex;
@@ -289,7 +294,11 @@
 .landing-laptop {
   position: relative;
   z-index: 10;
-  transform: hover:scale(1.02) transition-transform duration-500;
+  transition: transform 0.5s ease;
+}
+
+.landing-laptop:hover {
+  transform: scale(1.02);
 }
 
 .landing-laptop-screen {
@@ -477,8 +486,9 @@
 }
 
 .landing-container {
-  max-width: 1400px;
+  max-width: 100%;
   margin: 0 auto;
+  padding: 0;
 }
 
 .landing-section-header {
@@ -959,14 +969,17 @@
   }
 
   .landing-nav-content {
-    flex-direction: column;
+    flex-direction: row;
     gap: 1rem;
     text-align: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
   }
 
   .landing-nav-actions {
-    width: 100%;
+    display: flex;
     justify-content: center;
+    gap: 1rem;
   }
 
   .landing-hero {

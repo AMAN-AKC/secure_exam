@@ -1,4 +1,5 @@
 ﻿import { Exam } from '../models/Exam.js';
+import { Result } from '../models/Result.js';
 import { sha256, aesEncrypt } from '../utils/crypto.js';
 
 export const createExam = async (req, res) => {
@@ -148,4 +149,41 @@ export const updateExamSettings = async (req, res) => {
 export const listMyExams = async (req, res) => {
   const exams = await Exam.find({ createdBy: req.user.id }).select('-chunks.cipherText -chunks.iv');
   res.json(exams);
+};
+
+export const deleteExam = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    
+    // Only allow deletion of draft exams
+    if (exam.status !== 'draft') {
+      return res.status(400).json({ error: 'Only draft exams can be deleted' });
+    }
+    
+    await Exam.deleteOne({ _id: examId });
+    res.json({ message: 'Exam deleted successfully' });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to delete exam' });
+  }
+};
+
+export const getExamResults = async (req, res) => {
+  try {
+    const { examId } = req.params;
+    
+    // Verify exam exists and belongs to teacher
+    const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
+    if (!exam) return res.status(404).json({ error: 'Exam not found' });
+    
+    // Fetch all results for this exam with student details
+    const results = await Result.find({ exam: examId })
+      .populate('student', 'name email phone')
+      .sort({ submittedAt: -1 });
+    
+    res.json(results);
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to fetch exam results' });
+  }
 };

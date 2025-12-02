@@ -1,26 +1,26 @@
 ﻿:root {
-  /* Modern Light & Vibrant Theme - Attractive & Professional */
-  --bg: linear-gradient(135deg, #f0f4ff 0%, #f5f0ff 50%, #fff0f5 100%);  /* Soft gradient background */
-  --bg-secondary: #fafbff;
+  /* Deep Violet/Indigo Theme with Modern UI Design */
+  --bg: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f0f4f8 100%);  /* Light slate gradient background */
+  --bg-secondary: #f8fafc;
   --panel: #ffffff;        /* Pure white cards */
-  --panel-light: #f8f9ff;  /* Soft background */
+  --panel-light: #f8fafc;  /* Soft slate background (Slate 50) */
   --panel-elevated: #ffffff;
   --muted: #64748b;        /* Slate muted text */
   --text: #1e293b;         /* Dark text for readability */
   --text-secondary: #475569;
   --text-tertiary: #94a3b8;
   
-  /* Premium Gradient Brand Colors - Vibrant */
-  --brand: #6366f1;        /* Indigo - Modern & Attractive */
-  --brand-hover: #7c3aed;
-  --brand-dark: #5558e3;
-  --brand-light: rgba(99, 102, 241, 0.1);
-  --brand-lighter: rgba(99, 102, 241, 0.05);
+  /* Premium Gradient Brand Colors - Deep Violet */
+  --brand: #7c3aed;        /* Violet 600 - Primary */
+  --brand-hover: #a855f7;
+  --brand-dark: #6d28d9;
+  --brand-light: rgba(124, 58, 237, 0.1);
+  --brand-lighter: rgba(124, 58, 237, 0.05);
   
   /* Accent Colors - Vibrant & Attractive */
-  --accent: #8b5cf6;       /* Purple accent */
-  --accent-light: rgba(139, 92, 246, 0.1);
-  --accent-hover: #a78bfa;
+  --accent: #2563eb;       /* Blue accent */
+  --accent-light: rgba(37, 99, 235, 0.1);
+  --accent-hover: #3b82f6;
   
   /* Status Colors - Enhanced Vibrancy */
   --success: #10b981;      /* Emerald green */
@@ -40,11 +40,11 @@
   --info-dark: #0891b2;
   
   /* Premium Gradients - Modern & Eye-catching */
-  --gradient-primary: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
   --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
   --gradient-danger: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
   --gradient-warm: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
-  --gradient-aurora: linear-gradient(135deg, #6366f1 0%, #8b5cf6 50%, #10b981 100%);
+  --gradient-aurora: linear-gradient(135deg, #7c3aed 0%, #2563eb 50%, #10b981 100%);
   
   /* Borders & Dividers - Modern */
   --border: #e2e8f0;
@@ -60,7 +60,7 @@
   --shadow-2xl: 0 30px 80px rgba(15, 23, 42, 0.2);
   
   /* Glow Effects - Vibrant */
-  --glow-brand: 0 0 20px rgba(99, 102, 241, 0.3);
+  --glow-brand: 0 0 20px rgba(124, 58, 237, 0.3);
   --glow-success: 0 0 20px rgba(16, 185, 129, 0.3);
   --glow-danger: 0 0 20px rgba(239, 68, 68, 0.3);
   
@@ -125,7 +125,7 @@ body {
   font-weight: var(--font-weight-normal);
   line-height: 1.6;
   color: var(--text);
-  background: linear-gradient(135deg, #f0f4ff 0%, #f5f0ff 50%, #fff0f5 100%);
+  background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 50%, #f0f4f8 100%);
   background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;

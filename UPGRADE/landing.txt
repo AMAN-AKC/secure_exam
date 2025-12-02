@@ -1,0 +1,302 @@
+import React, { useState } from 'react';
+import { Shield, ChevronDown, Check, Rocket, Lock, Zap, Calendar, BarChart2, Globe, Layout, ArrowRight } from 'lucide-react';
+
+interface LandingPageProps {
+  onLogin: () => void;
+  onRegister: () => void;
+}
+
+const LandingPage: React.FC<LandingPageProps> = ({ onLogin, onRegister }) => {
+  const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  const toggleFaq = (index: number) => {
+    setOpenFaq(openFaq === index ? null : index);
+  };
+
+  return (
+    <div className="font-sans text-slate-900 bg-white">
+      {/* Navbar */}
+      <nav className="absolute top-0 w-full z-50 px-6 py-4 flex justify-between items-center text-white max-w-7xl left-1/2 transform -translate-x-1/2">
+        <div className="flex items-center gap-2 cursor-pointer">
+          <div className="bg-primary-600 p-1.5 rounded-lg">
+            <Shield className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-xl font-bold tracking-tight">SecureExam</span>
+        </div>
+        <div className="flex items-center gap-6">
+            <button onClick={onLogin} className="hover:text-primary-200 transition-colors font-medium">Sign In</button>
+            <button onClick={onRegister} className="bg-white/10 hover:bg-white/20 backdrop-blur-md border border-white/20 px-4 py-2 rounded-lg transition-all font-medium">Register</button>
+        </div>
+      </nav>
+
+      {/* Hero Section */}
+      <section className="relative bg-[#1a103c] overflow-hidden pt-32 pb-20 lg:pt-40 lg:pb-32">
+         {/* Background Decoration */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+            <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-primary-600/20 rounded-full blur-[100px]"></div>
+            <div className="absolute bottom-[-10%] left-[-10%] w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[100px]"></div>
+            
+            {/* Abstract floating shapes */}
+            <div className="absolute top-1/4 left-10 w-4 h-4 bg-primary-400 rounded-full opacity-50 animate-pulse"></div>
+            <div className="absolute bottom-1/3 right-20 w-3 h-3 bg-blue-400 rounded-sm opacity-50 animate-bounce"></div>
+        </div>
+
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="flex flex-col lg:flex-row items-center gap-16">
+            <div className="lg:w-1/2 text-white">
+              <div className="inline-block px-3 py-1 bg-primary-500/20 border border-primary-500/30 rounded-full text-primary-300 text-sm font-medium mb-6">
+                ✨ Professional Online Examination Platform
+              </div>
+              <h1 className="text-5xl lg:text-6xl font-bold leading-tight mb-6">
+                Secure. Scalable. <br/>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-400 to-blue-400">Smart Assessments.</span>
+              </h1>
+              <p className="text-slate-300 text-lg mb-8 leading-relaxed max-w-xl">
+                Enterprise-grade secure examination designed for modern educational institutions. Create, manage, and score with bank-level security and real-time monitoring.
+              </p>
+              <div className="flex flex-wrap gap-4">
+                <button 
+                  onClick={onRegister}
+                  className="bg-primary-600 hover:bg-primary-500 text-white px-8 py-3.5 rounded-lg font-semibold flex items-center gap-2 transition-all shadow-lg shadow-primary-600/30 hover:translate-y-[-2px]"
+                >
+                  <Rocket className="w-5 h-5" />
+                  Get Started
+                </button>
+                <button 
+                  onClick={onLogin}
+                  className="bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 text-white px-8 py-3.5 rounded-lg font-semibold flex items-center gap-2 transition-all hover:translate-y-[-2px]"
+                >
+                  <Lock className="w-5 h-5" />
+                  Login
+                </button>
+              </div>
+            </div>
+            
+            <div className="lg:w-1/2 relative perspective-1000">
+               {/* 3D Laptop Approximation */}
+               <div className="relative w-full max-w-lg mx-auto transform hover:scale-[1.02] transition-transform duration-500">
+                  {/* Glow behind */}
+                  <div className="absolute inset-0 bg-primary-600/30 blur-[60px] rounded-full"></div>
+                  
+                  {/* Laptop Base Structure */}
+                  <div className="relative z-10">
+                     {/* Screen */}
+                     <div className="bg-[#0f0a24] rounded-t-2xl p-2 border-t border-l border-r border-slate-700/50 shadow-2xl relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-full bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
+                        {/* Screen Content */}
+                        <div className="bg-[#1a103c] aspect-[16/10] rounded border border-slate-700/50 relative overflow-hidden flex flex-col">
+                            {/* Fake UI Header */}
+                            <div className="h-8 bg-[#0f0a24] border-b border-slate-700/50 flex items-center px-3 gap-2">
+                                <div className="w-2.5 h-2.5 rounded-full bg-red-500"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-yellow-500"></div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-green-500"></div>
+                            </div>
+                            {/* Fake UI Body */}
+                            <div className="p-4 grid grid-cols-3 gap-4 h-full">
+                                <div className="col-span-1 bg-slate-800/50 rounded animate-pulse h-3/4"></div>
+                                <div className="col-span-2 space-y-3">
+                                    <div className="h-20 bg-primary-900/30 border border-primary-500/30 rounded flex items-center justify-center">
+                                        <Shield className="w-8 h-8 text-primary-400" />
+                                    </div>
+                                    <div className="h-2 w-full bg-slate-700 rounded"></div>
+                                    <div className="h-2 w-2/3 bg-slate-700 rounded"></div>
+                                    <div className="h-2 w-3/4 bg-slate-700 rounded"></div>
+                                </div>
+                            </div>
+                            
+                            {/* Floating secure badge */}
+                            <div className="absolute bottom-4 right-4 bg-green-500/10 border border-green-500/20 backdrop-blur px-3 py-1 rounded-full flex items-center gap-2">
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                                <span className="text-xs text-green-400 font-mono">SECURE_MODE: ON</span>
+                            </div>
+                        </div>
+                     </div>
+                     {/* Keyboard Base */}
+                     <div className="bg-[#1e1438] h-4 rounded-b-xl shadow-2xl border-b border-l border-r border-slate-700 mx-[2%] relative">
+                        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-24 h-1.5 bg-slate-600/50 rounded-b-lg"></div>
+                     </div>
+                  </div>
+
+                  {/* Floating elements */}
+                  <div className="absolute -right-8 top-20 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 shadow-xl animate-[bounce_3s_infinite]">
+                      <div className="flex items-center gap-3">
+                          <div className="bg-green-500/20 p-2 rounded-lg">
+                              <Check className="w-5 h-5 text-green-400" />
+                          </div>
+                          <div>
+                              <div className="text-xs text-slate-300">System Check</div>
+                              <div className="text-sm font-bold text-white">Passed</div>
+                          </div>
+                      </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works */}
+      <section className="py-24 bg-[#0f0a24] text-white relative overflow-hidden">
+        <div className="container mx-auto px-6 relative z-10">
+          <div className="text-center mb-20">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+            <p className="text-slate-400 max-w-2xl mx-auto">Streamlined process for administrators and students. From creation to grading in minutes.</p>
+          </div>
+          
+          <div className="relative max-w-6xl mx-auto">
+             {/* Wave SVG Line */}
+             <svg className="absolute top-1/2 left-0 w-full h-24 -translate-y-1/2 hidden md:block text-primary-900" preserveAspectRatio="none" viewBox="0 0 1200 100">
+               <path d="M0,50 C200,50 300,20 400,20 C500,20 600,80 700,80 C800,80 900,50 1200,50" fill="none" stroke="currentColor" strokeWidth="2" strokeDasharray="8 8" className="opacity-50" />
+             </svg>
+             <svg className="absolute top-1/2 left-0 w-full h-24 -translate-y-1/2 hidden md:block text-primary-500" preserveAspectRatio="none" viewBox="0 0 1200 100">
+                <defs>
+                   <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="0%">
+                     <stop offset="0%" style={{stopColor: '#7c3aed', stopOpacity:1}} />
+                     <stop offset="100%" style={{stopColor: '#2563eb', stopOpacity:1}} />
+                   </linearGradient>
+                 </defs>
+               <path d="M0,50 C200,50 300,20 400,20 C500,20 600,80 700,80 C800,80 900,50 1200,50" fill="none" stroke="url(#grad1)" strokeWidth="4" />
+             </svg>
+
+             <div className="grid grid-cols-1 md:grid-cols-5 gap-8">
+               {[
+                 { id: 1, title: 'Design Exam', desc: 'Create options', icon: Layout, offset: 'md:translate-y-0' },
+                 { id: 2, title: 'Admin Approve', desc: 'Verify content', icon: Shield, offset: 'md:-translate-y-8' },
+                 { id: 3, title: 'Take Exam', desc: 'Secure register', icon: User, offset: 'md:translate-y-8' },
+                 { id: 4, title: 'Anti-Cheating', desc: 'Time vested', icon: Lock, offset: 'md:translate-y-0' },
+                 { id: 5, title: 'Get Results', desc: 'Instant Analysis', icon: BarChart2, offset: 'md:-translate-y-8' },
+               ].map((step, idx) => (
+                 <div key={step.id} className={`relative z-10 flex flex-col items-center text-center group ${step.offset}`}>
+                   <div className="w-16 h-16 rounded-2xl bg-[#1e1438] border border-primary-500/30 flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(124,58,237,0.2)] group-hover:scale-110 transition-transform duration-300 relative">
+                     <div className="absolute inset-0 bg-primary-600/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                     <span className="absolute -top-3 -right-3 w-8 h-8 bg-primary-600 rounded-full flex items-center justify-center font-bold text-sm border-4 border-[#0f0a24]">{step.id}</span>
+                     {idx === 2 ? <Layout className="w-7 h-7 text-primary-400" /> : <step.icon className="w-7 h-7 text-primary-400" />}
+                   </div>
+                   <h3 className="font-bold text-lg mb-2">{step.title}</h3>
+                   <p className="text-sm text-slate-400 max-w-[140px] leading-relaxed">{step.desc}</p>
+                 </div>
+               ))}
+             </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Section */}
+      <section className="py-24 bg-white">
+        <div className="container mx-auto px-6">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl font-bold text-slate-900 mb-4">Why Choose SecureExam?</h2>
+            <p className="text-slate-600">Built for the future of education</p>
+          </div>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+            {[
+              { icon: Lock, color: 'bg-blue-50 text-blue-600', title: 'Bank-Level Security', desc: 'End-to-end encrypted exam questions with blockchain-based tamper detection.' },
+              { icon: Zap, color: 'bg-amber-50 text-amber-600', title: 'Lightning Fast', desc: 'Optimized performance with minimal latency. Smooth experience even with thousands of users.' },
+              { icon: Calendar, color: 'bg-pink-50 text-pink-600', title: 'Flexible Scheduling', desc: 'Fixed schedule or flexible timing options. Support for both protected and open rules.' },
+              { icon: BarChart2, color: 'bg-indigo-50 text-indigo-600', title: 'Comprehensive Analytics', desc: 'Detailed performance reports, question analysis, and student progress tracking.' },
+              { icon: Layout, color: 'bg-cyan-50 text-cyan-600', title: 'Modern Interface', desc: 'Clean, intuitive design built with modern web technologies. Easy to navigate.' },
+              { icon: Globe, color: 'bg-green-50 text-green-600', title: 'Global Ready', desc: 'Support for multiple timezones and question formats. Perfect for worldwide institutions.' },
+            ].map((feature, idx) => (
+              <div key={idx} className="group p-8 rounded-3xl bg-slate-50 hover:bg-white hover:shadow-xl transition-all duration-300 border border-slate-100">
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-6 ${feature.color} group-hover:scale-110 transition-transform`}>
+                   <feature.icon className="w-7 h-7" />
+                </div>
+                <h3 className="text-xl font-bold mb-3 text-slate-800">{feature.title}</h3>
+                <p className="text-slate-600 leading-relaxed text-sm">{feature.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* FAQ Section */}
+      <section className="py-24 bg-slate-50">
+        <div className="container mx-auto px-6 max-w-4xl">
+            <div className="text-center mb-12">
+               <h2 className="text-3xl font-bold mb-4 text-slate-900">Frequently Asked Questions</h2>
+            </div>
+            
+            <div className="space-y-4">
+                {[
+                    "How secure is the SecureExam platform?",
+                    "Can students take exams on mobile devices?",
+                    "How does the approval process work?",
+                    "What should exams for specific roles and times look like?",
+                    "Is there a limit to the number of students?"
+                ].map((q, i) => (
+                    <div key={i} className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden transition-all duration-200 hover:shadow-md">
+                        <button 
+                            onClick={() => toggleFaq(i)}
+                            className="w-full flex justify-between items-center p-6 text-left"
+                        >
+                            <span className="font-semibold text-slate-800 text-lg">{q}</span>
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-slate-50 transition-transform duration-300 ${openFaq === i ? 'rotate-180 bg-primary-50 text-primary-600' : 'text-slate-400'}`}>
+                                <ChevronDown className="w-5 h-5" />
+                            </div>
+                        </button>
+                        {openFaq === i && (
+                            <div className="px-6 pb-6 text-slate-600 leading-relaxed animate-[fadeIn_0.3s_ease-out]">
+                                SecureExam uses advanced encryption and proctoring technologies to ensure the integrity of every assessment. We support a wide range of devices including secure lock-down browsers for mobile.
+                            </div>
+                        )}
+                    </div>
+                ))}
+            </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-20 bg-[#1a103c] text-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-primary-900/50 to-blue-900/50"></div>
+        <div className="container mx-auto px-6 relative z-10">
+            <div className="bg-gradient-to-r from-primary-600 to-blue-600 rounded-3xl p-12 md:p-20 text-center shadow-2xl relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-10 rounded-full blur-3xl transform translate-x-1/2 -translate-y-1/2"></div>
+                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-black opacity-10 rounded-full blur-3xl transform -translate-x-1/2 translate-y-1/2"></div>
+                 
+                 <div className="inline-flex items-center gap-2 bg-white/10 backdrop-blur rounded-full px-4 py-1 mb-6 border border-white/10">
+                    <Shield className="w-4 h-4 text-green-400" />
+                    <span className="text-sm font-medium">Enterprise Security</span>
+                 </div>
+                 
+                 <h2 className="text-4xl md:text-5xl font-bold mb-6">Ready to Transform Your Exams?</h2>
+                 <p className="text-primary-100 mb-10 max-w-2xl mx-auto text-lg">Join thousands of institutions using SecureExam for reliable, secure online assessments.</p>
+                 
+                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <button 
+                      onClick={onLogin}
+                      className="bg-white text-primary-900 hover:bg-slate-100 px-8 py-4 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-105"
+                    >
+                        <Layout className="w-5 h-5" />
+                        Secure Dashboard
+                    </button>
+                    <button 
+                      onClick={onRegister}
+                      className="bg-transparent border-2 border-white text-white hover:bg-white/10 px-8 py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-transform hover:scale-105"
+                    >
+                        <ArrowRight className="w-5 h-5" />
+                        Create Account
+                    </button>
+                </div>
+            </div>
+        </div>
+      </section>
+      
+      {/* Footer simple */}
+      <footer className="bg-[#0f0a24] text-slate-400 py-12 border-t border-slate-800">
+        <div className="container mx-auto px-6 text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+               <Shield className="w-6 h-6 text-primary-500" />
+               <span className="text-xl font-bold text-white">SecureExam</span>
+            </div>
+            <p className="text-sm mb-6">&copy; {new Date().getFullYear()} SecureExam Inc. All rights reserved.</p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+// Helper for icon in map
+function User(props: any) { return <svg {...props} xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> }
+
+export default LandingPage;

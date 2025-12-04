@@ -177,9 +177,10 @@ export const getExamResults = async (req, res) => {
     const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
     if (!exam) return res.status(404).json({ error: 'Exam not found' });
     
-    // Fetch all results for this exam with student details
+    // Fetch all results for this exam with student and exam details
     const results = await Result.find({ exam: examId })
       .populate('student', 'name email phone')
+      .populate('exam', 'title')
       .sort({ submittedAt: -1 });
     
     res.json(results);

@@ -930,9 +930,11 @@ export default function StudentDashboard(){
                         padding: '1.5rem',
                         display: 'flex',
                         justifyContent: 'space-between',
-                        alignItems: 'center'
+                        alignItems: 'flex-start',
+                        gap: '1.5rem',
+                        flexWrap: 'wrap'
                       }}>
-                        <div style={{ flex: 1 }}>
+                        <div style={{ flex: 1, minWidth: '250px' }}>
                           <h4 style={{
                             fontSize: '1.1rem',
                             fontWeight: '700',
@@ -958,9 +960,9 @@ export default function StudentDashboard(){
                             color: '#92400e',
                             fontSize: '0.9rem',
                             fontWeight: '600',
-                            maxWidth: '100%',
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word'
+                            wordBreak: 'break-word',
+                            overflowWrap: 'break-word',
+                            maxWidth: '100%'
                           }}>
                             ⏳ Results will be available on {result.hideReason ? (() => {
                               const formatUTCToIST = (utcDate) => {
@@ -984,7 +986,8 @@ export default function StudentDashboard(){
                           padding: '1.25rem',
                           background: '#fef3c7',
                           borderRadius: '0.75rem',
-                          minWidth: '100px'
+                          minWidth: '100px',
+                          flexShrink: 0
                         }}>
                           <div style={{
                             fontSize: '0.85rem',

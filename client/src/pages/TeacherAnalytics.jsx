@@ -87,7 +87,9 @@ export default function TeacherAnalytics() {
 
       // Fetch results for all exams in parallel
       const resultPromises = examsRes.data.map(exam =>
-        api.get(`/teacher/exams/${exam._id}/results`).catch(() => [])
+        api.get(`/teacher/exams/${exam._id}/results`)
+          .then(res => res.data || [])
+          .catch(() => [])
       );
       
       const resultsArrays = await Promise.all(resultPromises);
@@ -117,7 +119,10 @@ export default function TeacherAnalytics() {
 
     // Filter by exam
     if (selectedExam !== 'all') {
-      filteredResults = filteredResults.filter(r => r.examId === selectedExam || r.exam === selectedExam);
+      filteredResults = filteredResults.filter(r => {
+        const examId = r.exam?._id || r.examId || r.exam;
+        return examId === selectedExam;
+      });
     }
 
     // Calculate statistics - ALL DYNAMIC DATA
@@ -202,10 +207,11 @@ export default function TeacherAnalytics() {
     // Exam rankings - DYNAMIC CALCULATION
     const examStats = {};
     filteredResults.forEach(r => {
-      const examId = r.examId || r.exam;
+      const examId = r.exam?._id || r.examId || r.exam;
+      const examTitle = r.exam?.title || (examsData.find(e => e._id === examId))?.title || 'Unknown';
+      
       if (!examStats[examId]) {
-        const exam = examsData.find(e => e._id === examId);
-        examStats[examId] = { examId, title: exam?.title || 'Unknown', scores: [], students: 0 };
+        examStats[examId] = { examId, title: examTitle, scores: [], students: 0 };
       }
       const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
       examStats[examId].scores.push(score);

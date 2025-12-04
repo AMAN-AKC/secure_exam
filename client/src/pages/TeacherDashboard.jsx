@@ -77,12 +77,29 @@ export default function TeacherDashboard() {
         const examsRes = await api.get('/teacher/exams');
         const examsData = examsRes.data || [];
         
+        // Fetch results for all exams in parallel
+        const resultPromises = examsData.map(exam =>
+          api.get(`/teacher/exams/${exam._id}/results`)
+            .then(res => res.data)
+            .catch(() => [])
+        );
+        
+        const resultsArrays = await Promise.all(resultPromises);
+        const allResults = resultsArrays.flat().filter(r => r);
+        
+        // Create a map of exam IDs to their result counts for formatted exams
+        const resultCountByExamId = {};
+        allResults.forEach(result => {
+          const examId = result.exam?._id || result.exam || result.examId;
+          resultCountByExamId[examId] = (resultCountByExamId[examId] || 0) + 1;
+        });
+        
         // Format exams for display
         const formattedExams = examsData.map(exam => ({
           id: exam._id,
           title: exam.title,
           class: exam.classname || 'General',
-          students: exam.results?.length || 0,
+          students: resultCountByExamId[exam._id] || 0,
           date: new Date(exam.examStartTime || exam.availableFrom || exam.createdAt).toLocaleDateString(),
           duration: `${exam.durationMinutes || 60} mins`,
           status: getExamStatus(exam.examStartTime, exam.examEndTime)
@@ -91,7 +108,7 @@ export default function TeacherDashboard() {
         // Show only first 3 or all based on showAllExams flag
         setExams(formattedExams.slice(0, showAllExams ? formattedExams.length : 3));
 
-        // Calculate stats from exams - ALL DYNAMIC DATA
+        // Calculate stats from results - ALL DYNAMIC DATA
         const totalExams = examsData.length;
         const uniqueStudents = new Set();
         let totalScores = 0;
@@ -99,18 +116,14 @@ export default function TeacherDashboard() {
         let passedResults = 0; // Count results with score >= 60 (passing threshold)
         const PASS_THRESHOLD = 60;
 
-        examsData.forEach(exam => {
-          if (exam.results && exam.results.length > 0) {
-            exam.results.forEach(result => {
-              uniqueStudents.add(result.studentId?._id || result.student);
-              if (result.score !== undefined && result.score !== null) {
-                totalScores += result.score;
-                scoredResults++;
-                if (result.score >= PASS_THRESHOLD) {
-                  passedResults++;
-                }
-              }
-            });
+        allResults.forEach(result => {
+          uniqueStudents.add(result.studentId?._id || result.student?._id || result.student);
+          if (result.score !== undefined && result.score !== null) {
+            totalScores += result.score;
+            scoredResults++;
+            if (result.score >= PASS_THRESHOLD) {
+              passedResults++;
+            }
           }
         });
 
@@ -121,12 +134,7 @@ export default function TeacherDashboard() {
         const activeExams = examsData.filter(exam => getExamStatus(exam.examStartTime, exam.examEndTime) === 'active').length;
         
         // Count exams with submissions
-        let examsWithSubmissions = 0;
-        examsData.forEach(exam => {
-          if (exam.results && exam.results.length > 0) {
-            examsWithSubmissions++;
-          }
-        });
+        const examsWithSubmissions = Object.keys(resultCountByExamId).length;
 
         setSummary({
           activeExams,
@@ -142,7 +150,7 @@ export default function TeacherDashboard() {
         ]);
 
         // Generate chart data from results - ALL DYNAMIC DATA
-        const weeklyScores = generateWeeklyScores(examsData);
+        const weeklyScores = generateWeeklyScores(allResults);
         setChartData(weeklyScores);
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -278,7 +286,7 @@ export default function TeacherDashboard() {
     return 'active';
   };
 
-  const generateWeeklyScores = (examsData) => {
+  const generateWeeklyScores = (resultsData) => {
     // Get current week start date (Monday)
     const now = new Date();
     const currentDay = now.getDay();
@@ -294,24 +302,20 @@ export default function TeacherDashboard() {
       { name: 'Fri', score: 0, count: 0, date: new Date(weekStart.getTime() + 345600000) },
     ];
 
-    // Process each exam result and assign to the day it was submitted/created
-    examsData.forEach(exam => {
-      if (exam.results && exam.results.length > 0) {
-        exam.results.forEach(result => {
-          // Use submission date if available, otherwise use exam date
-          const resultDate = result.submittedAt ? new Date(result.submittedAt) : new Date(exam.createdAt);
-          resultDate.setHours(0, 0, 0, 0);
+    // Process each result and assign to the day it was submitted
+    resultsData.forEach(result => {
+      // Use submission date
+      const resultDate = result.submittedAt ? new Date(result.submittedAt) : new Date(result.createdAt);
+      resultDate.setHours(0, 0, 0, 0);
 
-          // Find which day of the current week this result belongs to
-          const dayDiff = Math.floor((resultDate - weekStart) / 86400000);
-          
-          if (dayDiff >= 0 && dayDiff < 5) {
-            if (result.score !== undefined && result.score !== null) {
-              scores[dayDiff].score += result.score;
-              scores[dayDiff].count += 1;
-            }
-          }
-        });
+      // Find which day of the current week this result belongs to
+      const dayDiff = Math.floor((resultDate - weekStart) / 86400000);
+      
+      if (dayDiff >= 0 && dayDiff < 5) {
+        if (result.score !== undefined && result.score !== null) {
+          scores[dayDiff].score += result.score;
+          scores[dayDiff].count += 1;
+        }
       }
     });
 

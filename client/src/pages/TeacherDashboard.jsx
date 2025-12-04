@@ -1025,13 +1025,27 @@ export default function TeacherDashboard() {
                       const convertLocalToUTC = (localDatetimeString) => {
                         if (!localDatetimeString) return null;
                         
-                        // The datetime-local input already gives us the local time
-                        // Just create a date and convert to ISO which will be in UTC
-                        const date = new Date(localDatetimeString + ':00'); // Add seconds
+                        // Parse the datetime-local string: YYYY-MM-DDTHH:mm
+                        const [datePart, timePart] = localDatetimeString.split('T');
+                        const [year, month, day] = datePart.split('-');
+                        const [hours, minutes] = timePart.split(':');
                         
-                        // The browser interprets this as local time
-                        // To get UTC, we need to subtract the timezone offset
-                        const utcDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+                        // Create a date object using local time components
+                        const localDate = new Date(
+                          parseInt(year),
+                          parseInt(month) - 1,  // Month is 0-indexed
+                          parseInt(day),
+                          parseInt(hours),
+                          parseInt(minutes),
+                          0,
+                          0
+                        );
+                        
+                        // Convert local time to UTC by subtracting the timezone offset
+                        // timezone offset is in minutes, positive for west of UTC (negative for east)
+                        // For IST: offset = -330 (UTC+5:30), so we subtract (-330) = add 330
+                        const offsetMs = localDate.getTimezoneOffset() * 60000;
+                        const utcDate = new Date(localDate.getTime() - offsetMs);
                         
                         return utcDate.toISOString();
                       };

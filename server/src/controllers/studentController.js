@@ -340,6 +340,11 @@ export const myResults = async (req, res) => {
       const exam = result.exam;
       const now = new Date();
       
+      // Skip if exam doesn't exist (deleted)
+      if (!exam) {
+        return null;
+      }
+      
       // Check if results should be shown
       if (!exam.showResults) {
         return {
@@ -422,7 +427,7 @@ export const myResults = async (req, res) => {
           resultsReleaseMessage: exam.resultsReleaseMessage
         };
       }
-    });
+    }).filter(result => result !== null);
     
     res.status(200).json(visibleResults);
   } catch (error) {
@@ -461,7 +466,7 @@ export const getDetailedResult = async (req, res) => {
     const exam = result.exam;
     const now = new Date();
     
-    if (!exam.showResults) {
+    if (!exam || !exam.showResults) {
       return res.status(403).json({ 
         error: 'Results not available', 
         message: 'Detailed results are not available for this exam' 

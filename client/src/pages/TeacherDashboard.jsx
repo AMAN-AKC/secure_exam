@@ -1021,50 +1021,22 @@ export default function TeacherDashboard() {
                     try {
                       setSubmitting(true);
                       
-                      // Helper function to convert datetime-local to UTC ISO string
-                      const convertLocalToUTC = (localDatetimeString) => {
-                        if (!localDatetimeString) return null;
-                        
-                        // Parse the datetime-local string: YYYY-MM-DDTHH:mm
-                        const [datePart, timePart] = localDatetimeString.split('T');
-                        const [year, month, day] = datePart.split('-');
-                        const [hours, minutes] = timePart.split(':');
-                        
-                        // Create a date object using local time components
-                        const localDate = new Date(
-                          parseInt(year),
-                          parseInt(month) - 1,  // Month is 0-indexed
-                          parseInt(day),
-                          parseInt(hours),
-                          parseInt(minutes),
-                          0,
-                          0
-                        );
-                        
-                        // IST is UTC+5:30, so offset is -330 minutes
-                        // To convert IST to UTC: subtract 5 hours 30 minutes
-                        const istOffsetMs = 5.5 * 60 * 60 * 1000; // 5:30 in milliseconds
-                        const utcDate = new Date(localDate.getTime() - istOffsetMs);
-                        
-                        return utcDate.toISOString();
-                      };
-                      
                       // Convert local datetime-local values to UTC ISO strings
                       const settingsToSend = { ...examSettings };
                       if (settingsToSend.availableFrom) {
-                        settingsToSend.availableFrom = convertLocalToUTC(settingsToSend.availableFrom);
+                        settingsToSend.availableFrom = new Date(settingsToSend.availableFrom).toISOString();
                       }
                       if (settingsToSend.availableTo) {
-                        settingsToSend.availableTo = convertLocalToUTC(settingsToSend.availableTo);
+                        settingsToSend.availableTo = new Date(settingsToSend.availableTo).toISOString();
                       }
                       if (settingsToSend.examStartTime) {
-                        settingsToSend.examStartTime = convertLocalToUTC(settingsToSend.examStartTime);
+                        settingsToSend.examStartTime = new Date(settingsToSend.examStartTime).toISOString();
                       }
                       if (settingsToSend.examEndTime) {
-                        settingsToSend.examEndTime = convertLocalToUTC(settingsToSend.examEndTime);
+                        settingsToSend.examEndTime = new Date(settingsToSend.examEndTime).toISOString();
                       }
                       if (settingsToSend.resultsReleaseDate) {
-                        settingsToSend.resultsReleaseDate = convertLocalToUTC(settingsToSend.resultsReleaseDate);
+                        settingsToSend.resultsReleaseDate = new Date(settingsToSend.resultsReleaseDate).toISOString();
                       }
                       
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);

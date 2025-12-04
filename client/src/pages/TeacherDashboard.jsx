@@ -1025,29 +1025,14 @@ export default function TeacherDashboard() {
                       const convertLocalToUTC = (localDatetimeString) => {
                         if (!localDatetimeString) return null;
                         
-                        // Parse the local datetime string (format: YYYY-MM-DDTHH:mm)
-                        const [datePart, timePart] = localDatetimeString.split('T');
-                        const [year, month, day] = datePart.split('-');
-                        const [hours, minutes] = timePart.split(':');
+                        // The datetime-local input already gives us the local time
+                        // Just create a date and convert to ISO which will be in UTC
+                        const date = new Date(localDatetimeString + ':00'); // Add seconds
                         
-                        // Create a date using local time
-                        const localDate = new Date(
-                          parseInt(year),
-                          parseInt(month) - 1,
-                          parseInt(day),
-                          parseInt(hours),
-                          parseInt(minutes),
-                          0,
-                          0
-                        );
+                        // The browser interprets this as local time
+                        // To get UTC, we need to subtract the timezone offset
+                        const utcDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
                         
-                        // Get the timezone offset in milliseconds
-                        const offset = localDate.getTimezoneOffset() * 60000;
-                        
-                        // Adjust to get the actual UTC time
-                        const utcDate = new Date(localDate.getTime() + offset);
-                        
-                        // Return ISO string
                         return utcDate.toISOString();
                       };
                       

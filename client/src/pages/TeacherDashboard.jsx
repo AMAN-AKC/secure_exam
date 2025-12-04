@@ -958,13 +958,13 @@ export default function TeacherDashboard() {
                       fontSize: '1rem'
                     }}
                   >
+                    <option value="immediate">Immediately</option>
                     <option value="after_exam_ends">After Exam Ends</option>
-                    <option value="on_date">On Specific Date</option>
-                    <option value="manual">Manual Release</option>
+                    <option value="custom_date">On Specific Date</option>
                   </select>
                 </div>
 
-                {examSettings.resultsReleaseType === 'on_date' && (
+                {examSettings.resultsReleaseType === 'custom_date' && (
                   <div style={{ marginBottom: '1rem' }}>
                     <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: '600', marginBottom: '0.5rem' }}>Release Date</label>
                     <input

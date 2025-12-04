@@ -6,6 +6,7 @@ const RegistrationSchema = new mongoose.Schema(
     exam: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam', required: true },
     startTime: { type: Date, required: true },
     endTime: { type: Date, required: true },
+    shuffledQuestionOrder: { type: [Number], default: null }, // Stores shuffled indices for consistent ordering
   },
   { timestamps: true }
 );

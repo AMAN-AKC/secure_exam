@@ -233,7 +233,21 @@ export const accessExam = async (req, res) => {
 
     // Shuffle questions if enabled
     if (exam.shuffleQuestions) {
-      sanitized = sanitized.sort(() => Math.random() - 0.5);
+      // If shuffle order not stored yet, generate and save it
+      if (!reg.shuffledQuestionOrder || reg.shuffledQuestionOrder.length === 0) {
+        // Generate shuffle indices
+        const indices = Array.from({ length: sanitized.length }, (_, i) => i);
+        // Fisher-Yates shuffle algorithm for proper randomization
+        for (let i = indices.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        // Save the shuffle order
+        reg.shuffledQuestionOrder = indices;
+        await reg.save();
+      }
+      // Apply stored shuffle order
+      sanitized = reg.shuffledQuestionOrder.map(idx => sanitized[idx]);
     }
 
     // Calculate remaining time

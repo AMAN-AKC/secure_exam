@@ -164,6 +164,46 @@ export default function TeacherDashboard() {
     }
   }, [user, showAllExams]);
 
+  // Check for exam to edit from TeacherExams page
+  useEffect(() => {
+    const editExamData = sessionStorage.getItem('editExam');
+    const shouldShowQuestionModal = sessionStorage.getItem('showQuestionModal');
+    
+    if (editExamData && shouldShowQuestionModal) {
+      try {
+        const examToEdit = JSON.parse(editExamData);
+        setExam(examToEdit);
+        
+        // Populate exam settings from the draft exam
+        setExamSettings({
+          title: examToEdit.title || '',
+          description: examToEdit.description || '',
+          durationMinutes: examToEdit.durationMinutes || 60,
+          availableFrom: examToEdit.availableFrom ? new Date(examToEdit.availableFrom).toISOString().slice(0, 16) : '',
+          availableTo: examToEdit.availableTo ? new Date(examToEdit.availableTo).toISOString().slice(0, 16) : '',
+          examStartTime: examToEdit.examStartTime ? new Date(examToEdit.examStartTime).toISOString().slice(0, 16) : '',
+          examEndTime: examToEdit.examEndTime ? new Date(examToEdit.examEndTime).toISOString().slice(0, 16) : '',
+          allowLateEntry: examToEdit.allowLateEntry || false,
+          shuffleQuestions: examToEdit.shuffleQuestions || false,
+          showResults: examToEdit.showResults !== false,
+          resultsReleaseType: examToEdit.resultsReleaseType || 'after_exam_ends',
+          resultsReleaseDate: examToEdit.resultsReleaseDate ? new Date(examToEdit.resultsReleaseDate).toISOString().slice(0, 16) : '',
+          resultsReleaseMessage: examToEdit.resultsReleaseMessage || ''
+        });
+        
+        setShowQuestionModal(true);
+        
+        // Clean up sessionStorage
+        sessionStorage.removeItem('editExam');
+        sessionStorage.removeItem('showQuestionModal');
+      } catch (error) {
+        console.error('Failed to load exam for editing:', error);
+        sessionStorage.removeItem('editExam');
+        sessionStorage.removeItem('showQuestionModal');
+      }
+    }
+  }, []);
+
   // Helper function to calculate missing exam timing values
   const calculateExamTiming = (updates, currentSettings) => {
     const newSettings = { ...currentSettings, ...updates };

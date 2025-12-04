@@ -129,13 +129,31 @@ export default function TeacherExams() {
   };
 
   // Handle edit exam
-  const handleEditExam = (exam) => {
+  const handleEditExam = async (exam) => {
     if (exam.status !== 'draft') {
       alert('Only draft exams can be edited');
       return;
     }
-    // TODO: Navigate to exam editor
-    alert('Edit functionality coming soon');
+
+    try {
+      // Fetch full exam details with questions
+      const { data: fullExam } = await api.get(`/teacher/exams`);
+      const examToEdit = fullExam.find(e => e._id === exam.id);
+      
+      if (!examToEdit) {
+        alert('Exam not found');
+        return;
+      }
+
+      // Store exam in sessionStorage for TeacherDashboard to retrieve
+      sessionStorage.setItem('editExam', JSON.stringify(examToEdit));
+      sessionStorage.setItem('showQuestionModal', 'true');
+      
+      // Navigate to dashboard
+      navigate('/teacher/dashboard');
+    } catch (error) {
+      alert('Failed to load exam for editing: ' + error.message);
+    }
   };
 
   // Handle delete single exam

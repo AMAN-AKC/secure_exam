@@ -1041,11 +1041,10 @@ export default function TeacherDashboard() {
                           0
                         );
                         
-                        // Convert local time to UTC by subtracting the timezone offset
-                        // timezone offset is in minutes, positive for west of UTC (negative for east)
-                        // For IST: offset = -330 (UTC+5:30), so we subtract (-330) = add 330
-                        const offsetMs = localDate.getTimezoneOffset() * 60000;
-                        const utcDate = new Date(localDate.getTime() - offsetMs);
+                        // IST is UTC+5:30, so offset is -330 minutes
+                        // To convert IST to UTC: subtract 5 hours 30 minutes
+                        const istOffsetMs = 5.5 * 60 * 60 * 1000; // 5:30 in milliseconds
+                        const utcDate = new Date(localDate.getTime() - istOffsetMs);
                         
                         return utcDate.toISOString();
                       };

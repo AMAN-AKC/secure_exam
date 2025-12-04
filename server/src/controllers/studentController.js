@@ -366,16 +366,9 @@ export const myResults = async (req, res) => {
         case 'after_exam_ends':
           if (exam.examEndTime) {
             // Fixed schedule exam - check if exam end time has passed
-            // Use getTime() for consistent UTC timestamp comparison
             resultsAvailable = now.getTime() >= new Date(exam.examEndTime).getTime();
-            const endTime = new Date(exam.examEndTime);
-            const month = String(endTime.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(endTime.getUTCDate()).padStart(2, '0');
-            const year = endTime.getUTCFullYear();
-            const hours = String(endTime.getUTCHours()).padStart(2, '0');
-            const minutes = String(endTime.getUTCMinutes()).padStart(2, '0');
-            const seconds = String(endTime.getUTCSeconds()).padStart(2, '0');
-            hideReason = resultsAvailable ? '' : `Results will be available after ${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+            // Send raw timestamp to client - let client format with formatUTCToIST()
+            hideReason = resultsAvailable ? '' : exam.examEndTime;
           } else {
             // Flexible exam - results available immediately after submission
             resultsAvailable = true;
@@ -391,19 +384,14 @@ export const myResults = async (req, res) => {
             resultsAvailable = now.getTime() >= releaseTime.getTime() && now.getTime() >= examEndTime.getTime();
             
             if (!resultsAvailable) {
+              // Send raw timestamp to client - let client format with formatUTCToIST()
               const waitUntil = releaseTime.getTime() > examEndTime.getTime() ? releaseTime : examEndTime;
-              const month = String(waitUntil.getUTCMonth() + 1).padStart(2, '0');
-              const day = String(waitUntil.getUTCDate()).padStart(2, '0');
-              const year = waitUntil.getUTCFullYear();
-              const hours = String(waitUntil.getUTCHours()).padStart(2, '0');
-              const minutes = String(waitUntil.getUTCMinutes()).padStart(2, '0');
-              const seconds = String(waitUntil.getUTCSeconds()).padStart(2, '0');
-              hideReason = `Results will be available on ${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+              hideReason = waitUntil;
             }
           } else {
             // Fallback to after exam ends if no custom date set
             resultsAvailable = exam.examEndTime ? now.getTime() >= new Date(exam.examEndTime).getTime() : true;
-            hideReason = resultsAvailable ? '' : 'Results will be available after the exam ends';
+            hideReason = resultsAvailable ? '' : (exam.examEndTime || '');
           }
           break;
           

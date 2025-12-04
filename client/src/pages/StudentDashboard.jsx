@@ -962,7 +962,7 @@ export default function StudentDashboard(){
                             fontWeight: '600',
                             wordBreak: 'break-word',
                             overflowWrap: 'break-word',
-                            maxWidth: '100%'
+                            maxWidth: '50%'
                           }}>
                             ⏳ Results will be available on {result.hideReason ? (() => {
                               const formatUTCToIST = (utcDate) => {

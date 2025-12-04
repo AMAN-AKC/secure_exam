@@ -663,6 +663,20 @@ export default function StudentDashboard(){
                   if (!exam || (!exam.id && !exam._id)) return null;
                   const examId = exam.id || exam._id;
                   
+                  // Helper function to format UTC date to IST (24-hour format)
+                  const formatUTCToIST = (utcDate) => {
+                    if (!utcDate) return 'N/A';
+                    const date = new Date(utcDate);
+                    // IST is UTC+5:30
+                    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+                    const day = String(istDate.getUTCDate()).padStart(2, '0');
+                    const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+                    const year = istDate.getUTCFullYear();
+                    const hours = String(istDate.getUTCHours()).padStart(2, '0');
+                    const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+                    return `${day}/${month}/${year} ${hours}:${minutes}`;
+                  };
+                  
                   return (
                     <div key={examId} style={{
                       background: '#f9fafb',
@@ -704,6 +718,9 @@ export default function StudentDashboard(){
                             <span>📊 {exam.questionCount || 0} Questions</span>
                             <span>⏱️ {exam.durationMinutes}min Duration</span>
                             <span>👨‍🏫 By {exam.createdBy?.name || 'Teacher'}</span>
+                            {exam.availableFrom && (
+                              <span>📅 Reg: {formatUTCToIST(exam.availableFrom)}</span>
+                            )}
                           </div>
                         </div>
                         <button
@@ -783,6 +800,19 @@ export default function StudentDashboard(){
                     const isUpcoming = startTime > now;
                     const isActive = now >= startTime && now <= endTime;
                     
+                    // Helper function to format UTC date to IST (24-hour format)
+                    const formatUTCToIST = (utcDate) => {
+                      const date = new Date(utcDate);
+                      // IST is UTC+5:30
+                      const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+                      const day = String(istDate.getUTCDate()).padStart(2, '0');
+                      const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+                      const year = istDate.getUTCFullYear();
+                      const hours = String(istDate.getUTCHours()).padStart(2, '0');
+                      const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+                      return `${day}/${month}/${year} ${hours}:${minutes}`;
+                    };
+                    
                     return (
                       <div key={reg._id} style={{
                         background: isActive ? 'rgba(16, 185, 129, 0.05)' : isUpcoming ? 'rgba(245, 158, 11, 0.05)' : '#f3f4f6',
@@ -808,8 +838,8 @@ export default function StudentDashboard(){
                             fontSize: '0.9rem',
                             color: '#6b7280'
                           }}>
-                            <span>📅 {dayjs(startTime).format('MMM DD, YYYY')}</span>
-                            <span>⏰ {dayjs(startTime).format('HH:mm')} - {dayjs(endTime).format('HH:mm')}</span>
+                            <span>📅 {formatUTCToIST(startTime)}</span>
+                            <span>⏱️ {formatUTCToIST(startTime).split(' ')[1]} - {formatUTCToIST(endTime).split(' ')[1]}</span>
                             <span style={{
                               background: isActive ? '#10b981' : isUpcoming ? '#f59e0b' : '#9ca3af',
                               color: 'white',

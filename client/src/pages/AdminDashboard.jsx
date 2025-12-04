@@ -35,18 +35,33 @@ export default function AdminDashboard() {
         outputText += `${index + 1}. ${exam.title}\n`;
         outputText += `   Status: ${status}\n`;
         outputText += `   Teacher: ${exam.createdBy.name} (${exam.createdBy.email})\n`;
-        outputText += `   Created: ${new Date(exam.createdAt).toLocaleString('en-GB', { hour12: false })}\n`;
+        
+        // Helper function to format UTC date to IST (24-hour format)
+        const formatUTCToIST = (utcDate) => {
+          const date = new Date(utcDate);
+          // IST is UTC+5:30
+          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+          const day = String(istDate.getUTCDate()).padStart(2, '0');
+          const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+          const year = istDate.getUTCFullYear();
+          const hours = String(istDate.getUTCHours()).padStart(2, '0');
+          const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+          const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+          return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+        };
+        
+        outputText += `   Created: ${formatUTCToIST(exam.createdAt)}\n`;
 
         if (exam.availableFrom) {
-          outputText += `   Registration: ${new Date(exam.availableFrom).toLocaleString('en-GB', { hour12: false })}`;
+          outputText += `   Registration: ${formatUTCToIST(exam.availableFrom)}`;
           if (exam.availableTo) {
-            outputText += ` - ${new Date(exam.availableTo).toLocaleString('en-GB', { hour12: false })}`;
+            outputText += ` - ${formatUTCToIST(exam.availableTo)}`;
           }
           outputText += '\n';
         }
 
         if (exam.examStartTime) {
-          outputText += `   Exam Time: ${new Date(exam.examStartTime).toLocaleString('en-GB', { hour12: false })} - ${new Date(exam.examEndTime).toLocaleString('en-GB', { hour12: false })}\n`;
+          outputText += `   Exam Time: ${formatUTCToIST(exam.examStartTime)} - ${formatUTCToIST(exam.examEndTime)}\n`;
         }
 
         if (exam.expiryReason) {

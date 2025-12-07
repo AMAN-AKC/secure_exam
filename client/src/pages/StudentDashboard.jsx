@@ -942,7 +942,7 @@ export default function StudentDashboard(){
                             flexWrap: 'wrap',
                             marginBottom: '0.75rem'
                           }}>
-                            <span>📅 Submitted: {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>📅 Submitted: {formatUTCToIST(result.submittedAt)}</span>
                           </div>
                           <div style={{
                             padding: '0.75rem 1rem',
@@ -1009,7 +1009,7 @@ export default function StudentDashboard(){
                           color: '#6b7280',
                           flexWrap: 'wrap'
                         }}>
-                          <span>📅 {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>📅 {formatUTCToIST(result.submittedAt)}</span>
                           {result.timeTaken && (
                             <span>⏱️ {Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</span>
                           )}
@@ -1098,7 +1098,7 @@ export default function StudentDashboard(){
                 <div>
                   <h3 style={{ fontWeight: '600', fontSize: '1.1rem', margin: '0 0 0.5rem' }}>{showDetailedResult.exam?.title}</h3>
                   <div style={{ fontSize: '0.9rem', color: '#6b7280', display: 'grid', gap: '0.25rem' }}>
-                    <div>📅 Submitted: {new Date(showDetailedResult.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div>📅 Submitted: {formatUTCToIST(showDetailedResult.submittedAt)}</div>
                     {showDetailedResult.timeTaken && (
                       <div>⏱️ Time Taken: {Math.floor(showDetailedResult.timeTaken / 60)}m {showDetailedResult.timeTaken % 60}s</div>
                     )}

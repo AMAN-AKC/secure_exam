@@ -1,5 +1,4 @@
 ﻿import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import dayjs from 'dayjs';
 import api from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import Button from '../components/Button.jsx';
@@ -965,7 +964,7 @@ export default function StudentDashboard(){
                             flexWrap: 'wrap',
                             marginBottom: '0.75rem'
                           }}>
-                            <span>📅 Submitted: {dayjs(result.submittedAt).format('MMM DD, YYYY HH:mm')}</span>
+                            <span>📅 Submitted: {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <div style={{
                             padding: '0.75rem 1rem',
@@ -1046,7 +1045,7 @@ export default function StudentDashboard(){
                           color: '#6b7280',
                           flexWrap: 'wrap'
                         }}>
-                          <span>📅 {dayjs(result.submittedAt).format('MMM DD, YYYY HH:mm')}</span>
+                          <span>📅 {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                           {result.timeTaken && (
                             <span>⏱️ {Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</span>
                           )}
@@ -1135,7 +1134,7 @@ export default function StudentDashboard(){
                 <div>
                   <h3 style={{ fontWeight: '600', fontSize: '1.1rem', margin: '0 0 0.5rem' }}>{showDetailedResult.exam?.title}</h3>
                   <div style={{ fontSize: '0.9rem', color: '#6b7280', display: 'grid', gap: '0.25rem' }}>
-                    <div>📅 Submitted: {dayjs(showDetailedResult.submittedAt).format('MMM DD, YYYY HH:mm')}</div>
+                    <div>📅 Submitted: {new Date(showDetailedResult.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
                     {showDetailedResult.timeTaken && (
                       <div>⏱️ Time Taken: {Math.floor(showDetailedResult.timeTaken / 60)}m {showDetailedResult.timeTaken % 60}s</div>
                     )}

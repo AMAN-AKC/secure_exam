@@ -86,8 +86,21 @@ export default function StudentDashboard(){
       
       const message = data.message || 'Registration successful. Check your schedule.';
       if (data.startTime && data.endTime) {
-        const startTime = dayjs(data.startTime).format('MMM DD, YYYY [at] HH:mm');
-        const endTime = dayjs(data.endTime).format('HH:mm');
+        // Convert UTC to IST (UTC+5:30)
+        const formatUTCToIST = (utcDate) => {
+          const date = new Date(utcDate);
+          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+          const day = String(istDate.getDate()).padStart(2, '0');
+          const month = String(istDate.getMonth() + 1).padStart(2, '0');
+          const year = istDate.getFullYear();
+          const hours = String(istDate.getHours()).padStart(2, '0');
+          const minutes = String(istDate.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year} at ${hours}:${minutes}`;
+        };
+        const startTime = formatUTCToIST(data.startTime);
+        const endTimeObj = new Date(data.endTime);
+        const endTimeIST = new Date(endTimeObj.getTime() + (5.5 * 60 * 60 * 1000));
+        const endTime = String(endTimeIST.getHours()).padStart(2, '0') + ':' + String(endTimeIST.getMinutes()).padStart(2, '0');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
         alert(message);

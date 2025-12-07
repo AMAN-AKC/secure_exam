@@ -103,7 +103,7 @@ export default function StudentDashboard(){
         const startTime = formatUTCToIST(data.startTime);
         const endTimeObj = new Date(data.endTime);
         const endTimeIST = new Date(endTimeObj.getTime() + (5.5 * 60 * 60 * 1000));
-        const endTime = String(endTimeIST.getHours()).padStart(2, '0') + ':' + String(endTimeIST.getMinutes()).padStart(2, '0');
+        const endTime = String(endTimeIST.getUTCHours()).padStart(2, '0') + ':' + String(endTimeIST.getUTCMinutes()).padStart(2, '0');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
         alert(message);

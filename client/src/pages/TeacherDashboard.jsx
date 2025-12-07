@@ -1078,34 +1078,43 @@ export default function TeacherDashboard() {
                     try {
                       setSubmitting(true);
                       
-                      // Convert local datetime-local values to UTC ISO strings
-                      const settingsToSend = { ...examSettings };
                       // Convert IST times to UTC for storage
-                      // User enters times in IST, we need to convert to UTC by subtracting 5:30
+                      // datetime-local input value is "YYYY-MM-DDTHH:mm" which represents LOCAL/IST time
+                      // We need to treat this as IST and convert to UTC for database storage
+                      const convertISTToUTC = (datetimeLocalStr) => {
+                        if (!datetimeLocalStr) return null;
+                        // Parse the string as if it's in IST
+                        // datetime-local format: "2025-12-07T22:15"
+                        const parts = datetimeLocalStr.split('T');
+                        const [year, month, day] = parts[0].split('-');
+                        const [hours, minutes] = parts[1].split(':');
+                        
+                        // Create a UTC date representing the IST time
+                        // If user enters 22:15, we create a UTC date: 2025-12-07T22:15:00Z
+                        const istUTCEquivalent = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00Z`);
+                        
+                        // Now subtract 5:30 to get actual UTC time
+                        // (because 22:15 IST = 16:45 UTC)
+                        const actualUTC = new Date(istUTCEquivalent.getTime() - (5.5 * 60 * 60 * 1000));
+                        
+                        return actualUTC.toISOString();
+                      };
+                      
+                      const settingsToSend = { ...examSettings };
                       if (settingsToSend.availableFrom) {
-                        const istDate = new Date(settingsToSend.availableFrom);
-                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
-                        settingsToSend.availableFrom = utcDate.toISOString();
+                        settingsToSend.availableFrom = convertISTToUTC(settingsToSend.availableFrom);
                       }
                       if (settingsToSend.availableTo) {
-                        const istDate = new Date(settingsToSend.availableTo);
-                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
-                        settingsToSend.availableTo = utcDate.toISOString();
+                        settingsToSend.availableTo = convertISTToUTC(settingsToSend.availableTo);
                       }
                       if (settingsToSend.examStartTime) {
-                        const istDate = new Date(settingsToSend.examStartTime);
-                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
-                        settingsToSend.examStartTime = utcDate.toISOString();
+                        settingsToSend.examStartTime = convertISTToUTC(settingsToSend.examStartTime);
                       }
                       if (settingsToSend.examEndTime) {
-                        const istDate = new Date(settingsToSend.examEndTime);
-                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
-                        settingsToSend.examEndTime = utcDate.toISOString();
+                        settingsToSend.examEndTime = convertISTToUTC(settingsToSend.examEndTime);
                       }
                       if (settingsToSend.resultsReleaseDate) {
-                        const istDate = new Date(settingsToSend.resultsReleaseDate);
-                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
-                        settingsToSend.resultsReleaseDate = utcDate.toISOString();
+                        settingsToSend.resultsReleaseDate = convertISTToUTC(settingsToSend.resultsReleaseDate);
                       }
                       
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);

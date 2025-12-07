@@ -174,20 +174,33 @@ export default function TeacherDashboard() {
         const examToEdit = JSON.parse(editExamData);
         setExam(examToEdit);
         
+        // Helper to convert UTC timestamp to IST for datetime-local input
+        const convertUTCToISTDatetimeLocal = (utcDate) => {
+          if (!utcDate) return '';
+          const date = new Date(utcDate);
+          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+          const year = istDate.getFullYear();
+          const month = String(istDate.getMonth() + 1).padStart(2, '0');
+          const day = String(istDate.getDate()).padStart(2, '0');
+          const hours = String(istDate.getHours()).padStart(2, '0');
+          const minutes = String(istDate.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+        
         // Populate exam settings from the draft exam
         setExamSettings({
           title: examToEdit.title || '',
           description: examToEdit.description || '',
           durationMinutes: examToEdit.durationMinutes || 60,
-          availableFrom: examToEdit.availableFrom ? new Date(examToEdit.availableFrom).toISOString().slice(0, 16) : '',
-          availableTo: examToEdit.availableTo ? new Date(examToEdit.availableTo).toISOString().slice(0, 16) : '',
-          examStartTime: examToEdit.examStartTime ? new Date(examToEdit.examStartTime).toISOString().slice(0, 16) : '',
-          examEndTime: examToEdit.examEndTime ? new Date(examToEdit.examEndTime).toISOString().slice(0, 16) : '',
+          availableFrom: convertUTCToISTDatetimeLocal(examToEdit.availableFrom),
+          availableTo: convertUTCToISTDatetimeLocal(examToEdit.availableTo),
+          examStartTime: convertUTCToISTDatetimeLocal(examToEdit.examStartTime),
+          examEndTime: convertUTCToISTDatetimeLocal(examToEdit.examEndTime),
           allowLateEntry: examToEdit.allowLateEntry || false,
           shuffleQuestions: examToEdit.shuffleQuestions || false,
           showResults: examToEdit.showResults !== false,
           resultsReleaseType: examToEdit.resultsReleaseType || 'after_exam_ends',
-          resultsReleaseDate: examToEdit.resultsReleaseDate ? new Date(examToEdit.resultsReleaseDate).toISOString().slice(0, 16) : '',
+          resultsReleaseDate: convertUTCToISTDatetimeLocal(examToEdit.resultsReleaseDate),
           resultsReleaseMessage: examToEdit.resultsReleaseMessage || ''
         });
         
@@ -1067,20 +1080,32 @@ export default function TeacherDashboard() {
                       
                       // Convert local datetime-local values to UTC ISO strings
                       const settingsToSend = { ...examSettings };
+                      // Convert IST times to UTC for storage
+                      // User enters times in IST, we need to convert to UTC by subtracting 5:30
                       if (settingsToSend.availableFrom) {
-                        settingsToSend.availableFrom = new Date(settingsToSend.availableFrom).toISOString();
+                        const istDate = new Date(settingsToSend.availableFrom);
+                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+                        settingsToSend.availableFrom = utcDate.toISOString();
                       }
                       if (settingsToSend.availableTo) {
-                        settingsToSend.availableTo = new Date(settingsToSend.availableTo).toISOString();
+                        const istDate = new Date(settingsToSend.availableTo);
+                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+                        settingsToSend.availableTo = utcDate.toISOString();
                       }
                       if (settingsToSend.examStartTime) {
-                        settingsToSend.examStartTime = new Date(settingsToSend.examStartTime).toISOString();
+                        const istDate = new Date(settingsToSend.examStartTime);
+                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+                        settingsToSend.examStartTime = utcDate.toISOString();
                       }
                       if (settingsToSend.examEndTime) {
-                        settingsToSend.examEndTime = new Date(settingsToSend.examEndTime).toISOString();
+                        const istDate = new Date(settingsToSend.examEndTime);
+                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+                        settingsToSend.examEndTime = utcDate.toISOString();
                       }
                       if (settingsToSend.resultsReleaseDate) {
-                        settingsToSend.resultsReleaseDate = new Date(settingsToSend.resultsReleaseDate).toISOString();
+                        const istDate = new Date(settingsToSend.resultsReleaseDate);
+                        const utcDate = new Date(istDate.getTime() - (5.5 * 60 * 60 * 1000));
+                        settingsToSend.resultsReleaseDate = utcDate.toISOString();
                       }
                       
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);

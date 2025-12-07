@@ -675,7 +675,11 @@ export default function StudentDashboard(){
                     const hours = String(istDate.getHours()).padStart(2, '0');
                     const minutes = String(istDate.getMinutes()).padStart(2, '0');
                     return `${day}/${month}/${year} ${hours}:${minutes}`;
-                  };          };                      background: '#f9fafb',
+                  };
+                  
+                  return (
+                    <div style={{
+                      background: '#f9fafb',
                       border: '1px solid #e5e7eb',
                       borderRadius: '0.875rem',
                       padding: '1.5rem',

@@ -125,8 +125,11 @@ export default function StudentDashboard(){
         if (error?.message) {
           let displayMessage = error.message;
           if (error.minutesUntilStart !== undefined && error.startTime) {
-            const startTime = dayjs(error.startTime);
-            displayMessage = `Exam starts in ${error.minutesUntilStart} minutes at ${startTime.format('HH:mm')}`;
+            const startTimeDate = new Date(error.startTime);
+            const istStartTime = new Date(startTimeDate.getTime() + (5.5 * 60 * 60 * 1000));
+            const hours = String(istStartTime.getHours()).padStart(2, '0');
+            const minutes = String(istStartTime.getMinutes()).padStart(2, '0');
+            displayMessage = `Exam starts in ${error.minutesUntilStart} minutes at ${hours}:${minutes}`;
           }
           alert(`${error.error}\n\n${displayMessage}`);
         } else {

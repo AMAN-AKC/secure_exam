@@ -669,17 +669,13 @@ export default function StudentDashboard(){
                     const date = new Date(utcDate);
                     // IST is UTC+5:30
                     const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-                    const day = String(istDate.getUTCDate()).padStart(2, '0');
-                    const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
-                    const year = istDate.getUTCFullYear();
-                    const hours = String(istDate.getUTCHours()).padStart(2, '0');
-                    const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+                    const day = String(istDate.getDate()).padStart(2, '0');
+                    const month = String(istDate.getMonth() + 1).padStart(2, '0');
+                    const year = istDate.getFullYear();
+                    const hours = String(istDate.getHours()).padStart(2, '0');
+                    const minutes = String(istDate.getMinutes()).padStart(2, '0');
                     return `${day}/${month}/${year} ${hours}:${minutes}`;
-                  };
-                  
-                  return (
-                    <div key={examId} style={{
-                      background: '#f9fafb',
+                  };          };                      background: '#f9fafb',
                       border: '1px solid #e5e7eb',
                       borderRadius: '0.875rem',
                       padding: '1.5rem',

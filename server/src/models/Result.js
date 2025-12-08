@@ -25,89 +25,87 @@ const ResultSchema = new mongoose.Schema(
     examDuration: { type: Number }, // allocated exam duration in minutes
 
     // ===== ENCRYPTION FIELDS =====
-    // For encrypted answers (future migration)
+    // For encrypted answers (future migration) - AES-256-CBC encrypted answer details
     encryptedAnswers: {
       iv: String,
-      cipherText: String,
-      description: 'AES-256-CBC encrypted answer details'
+      cipherText: String
     },
 
     // ===== IMMUTABILITY & BLOCKCHAIN FIELDS =====
     
     // Result hash chain for blockchain-like protection
+    // SHA-256 hash of the entire result for integrity verification
     resultHash: {
       type: String,
-      default: null,
-      description: 'SHA-256 hash of the entire result for integrity verification'
+      default: null
     },
+    // Link to previous submission (for chain)
     prevResultHash: {
       type: String,
-      default: 'GENESIS',
-      description: 'Link to previous submission (for chain)'
+      default: 'GENESIS'
     },
 
     // Immutability flag - once locked, result cannot be modified
     isLocked: {
       type: Boolean,
-      default: false,
-      description: 'If true, result is immutable and cannot be updated'
+      default: false
     },
+    // Timestamp when result was locked
     lockedAt: {
       type: Date,
-      default: null,
-      description: 'Timestamp when result was locked'
+      default: null
     },
 
     // Soft delete support (write-once semantics)
+    // If true, result is soft-deleted but still retrievable
     isDeleted: {
       type: Boolean,
-      default: false,
-      description: 'If true, result is soft-deleted but still retrievable'
+      default: false
     },
+    // Timestamp when result was soft-deleted
     deletedAt: {
       type: Date,
-      default: null,
-      description: 'Timestamp when result was soft-deleted'
+      default: null
     },
+    // User who soft-deleted the result
     deletedBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
-      default: null,
-      description: 'User who soft-deleted the result'
+      default: null
     },
+    // Reason for soft deletion
     deletionReason: {
       type: String,
-      default: null,
-      description: 'Reason for soft deletion'
+      default: null
     },
 
     // ===== LEDGER-STYLE STORAGE (Version Chain) =====
+    // Version number for this result (1 for first submission, 2 for first correction, etc.)
     versionNumber: {
       type: Number,
-      default: 1,
-      description: 'Version number for this result (1 for first submission, 2 for first correction, etc.)'
+      default: 1
     },
+    // Reference to previous version of this result (for corrections)
     previousResultId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Result',
-      default: null,
-      description: 'Reference to previous version of this result (for corrections)'
+      default: null
     },
+    // True if this result has been corrected/superseded by a newer version
     isSuperseeded: {
       type: Boolean,
-      default: false,
-      description: 'True if this result has been corrected/superseded by a newer version'
+      default: false
     },
-    superseedingResultId: {
+    // Reference to the newer version that supersedes this one
+    nextResultId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Result',
-      default: null,
-      description: 'Reference to the newer version that supersedes this one'
+      default: null
     },
+    // Reason for creating a new version (correction, re-evaluation, etc.)
     correctionReason: {
       type: String,
-      default: null,
-      description: 'Reason for creating a new version (correction, re-evaluation, etc.)'
+      default: null
     }
   },
   { timestamps: true }

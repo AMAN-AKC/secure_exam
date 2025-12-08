@@ -1,6 +1,9 @@
 ﻿import { Router } from 'express';
 import { authMiddleware, requireRole } from '../middlewares/auth.js';
 import { createExam, addQuestion, finalizeExam, listMyExams, updateExamSettings, deleteExam, getExamResults } from '../controllers/teacherController.js';
+import { requireIdentityVerification } from '../middlewares/verifyIdentity.js';
+import { logResourceAccess } from '../middlewares/accessLog.js';
+import { getExamChangeHistory, getResultChangeHistory } from '../middlewares/changeTracking.js';
 
 const router = Router();
 router.use(authMiddleware(), requireRole('teacher'));
@@ -8,9 +11,19 @@ router.use(authMiddleware(), requireRole('teacher'));
 router.post('/exams', createExam);
 router.post('/exams/:examId/questions', addQuestion);
 router.put('/exams/:examId/settings', updateExamSettings);
-router.post('/exams/:examId/finalize', finalizeExam);
+
+// Sensitive operation: Finalize exam requires identity verification
+// Client must first call GET /auth/verify-identity/challenge to get challenge
+// Then call POST /auth/verify-identity/password or /auth/verify-identity/otp
+// Then include the identityToken in body of this request
+router.post('/exams/:examId/finalize', requireIdentityVerification, finalizeExam);
+
 router.delete('/exams/:examId', deleteExam);
-router.get('/exams', listMyExams);
-router.get('/exams/:examId/results', getExamResults);
+router.get('/exams', logResourceAccess('exam'), listMyExams);
+router.get('/exams/:examId/results', logResourceAccess('exam_results'), getExamResults);
+
+// Change tracking endpoints
+router.get('/exams/:examId/change-history', logResourceAccess('exam'), getExamChangeHistory); // View exam modifications
+router.get('/results/:resultId/change-history', logResourceAccess('result'), getResultChangeHistory); // View result modifications
 
 export default router;

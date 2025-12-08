@@ -14,6 +14,12 @@ const UserSchema = new mongoose.Schema(
     verificationCode: { type: String },
     verificationCodeExpiry: { type: Date },
     authMethod: { type: String, enum: ['password', 'google', 'phone'], default: 'password' },
+
+    // ===== MFA FIELDS =====
+    mfaRequired: { type: Boolean, default: false },
+    mfaOtp: { type: String, default: null },
+    mfaOtpExpiry: { type: Date, default: null },
+    lastLoginAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

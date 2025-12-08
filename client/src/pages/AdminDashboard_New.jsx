@@ -37,16 +37,10 @@ export default function AdminDashboard() {
       // Helper function to format UTC date to IST (24-hour format)
       const formatUTCToIST = (utcDate) => {
         if (!utcDate) return 'N/A';
-        const date = new Date(utcDate);
-        const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-        // Use getUTC* methods because istDate is still in UTC, we just adjusted the timestamp
-        const day = String(istDate.getUTCDate()).padStart(2, '0');
-        const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
-        const year = istDate.getUTCFullYear();
-        const hours = String(istDate.getUTCHours()).padStart(2, '0');
-        const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
-        const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
-        return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
+        // Use dayjs with UTC mode, then add 5:30 hours for IST
+        const dayjsUtc = dayjs.utc(utcDate);
+        const istTime = dayjsUtc.add(5, 'hour').add(30, 'minute');
+        return istTime.format('DD/MM/YYYY, HH:mm:ss');
       };
 
       data.forEach((exam, index) => {

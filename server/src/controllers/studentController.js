@@ -2,7 +2,8 @@
 import { Exam } from '../models/Exam.js';
 import { Registration } from '../models/Registration.js';
 import { Result } from '../models/Result.js';
-import { aesDecrypt } from '../utils/crypto.js';
+import { aesDecrypt, generateResultHash, generateAnswerHashChain, encryptAnswers, decryptAnswers } from '../utils/crypto.js';
+import { logAuditEvent } from '../utils/auditLog.js';
 
 export const listApprovedExams = async (req, res) => {
   try {
@@ -316,6 +317,22 @@ export const submitExam = async (req, res) => {
     const total = questions.length;
     const percentage = Math.round((score / total) * 100);
     
+    // Generate hash chain for answers (blockchain-like protection)
+    const { finalHash: answerChainHash } = generateAnswerHashChain(detailedAnswers);
+    
+    // Generate result hash
+    const resultHash = generateResultHash(
+      req.user.id,
+      exam._id,
+      score,
+      percentage,
+      detailedAnswers,
+      'GENESIS'
+    );
+
+    // Encrypt answers for storage
+    const encryptedAnswers = encryptAnswers(detailedAnswers);
+    
     const result = await Result.findOneAndUpdate(
       { student: req.user.id, exam: exam._id },
       { 
@@ -324,10 +341,27 @@ export const submitExam = async (req, res) => {
         percentage,
         submittedAt: new Date(),
         answers: detailedAnswers,
+        encryptedAnswers: encryptedAnswers, // NEW: Store encrypted copy
         timeTaken: timeTaken || null,
-        examDuration: exam.durationMinutes || null
+        examDuration: exam.durationMinutes || null,
+        resultHash, // Add hash for integrity verification
+        prevResultHash: 'GENESIS', // First submission
+        isLocked: true, // Lock immediately after submission
+        lockedAt: new Date() // Record when it was locked
       },
       { new: true, upsert: true }
+    );
+
+    // Log audit event
+    await logAuditEvent(
+      req,
+      req.user.id,
+      'result_submitted',
+      'Result',
+      result._id,
+      null,
+      `Score: ${score}/${total} (${percentage}%)`,
+      'success'
     );
 
     res.json(result);
@@ -525,5 +559,62 @@ export const getDetailedResult = async (req, res) => {
   } catch (error) {
     console.error('Error fetching detailed result:', error);
     res.status(500).json({ error: 'Failed to fetch detailed result' });
+  }
+};
+
+/**
+ * Verify result blockchain integrity
+ * Returns whether the result has been tampered with
+ */
+export const verifyResultIntegrity = async (req, res) => {
+  try {
+    const { resultId } = req.params;
+
+    const result = await Result.findOne({
+      _id: resultId,
+      student: req.user.id
+    });
+
+    if (!result) {
+      return res.status(404).json({ error: 'Result not found' });
+    }
+
+    // Import hash verification function
+    const { verifyResultHashChain } = await import('../utils/crypto.js');
+
+    // Verify the result hash
+    const verification = verifyResultHashChain(result);
+
+    // Log audit event
+    await logAuditEvent(
+      req,
+      req.user.id,
+      'result_viewed',
+      'Result',
+      result._id,
+      null,
+      `Verification: ${verification.valid ? 'VALID' : 'COMPROMISED'}`,
+      'success'
+    );
+
+    res.json({
+      resultId: result._id,
+      status: verification.valid ? 'VALID' : 'COMPROMISED',
+      message: verification.message,
+      hashMatch: verification.valid,
+      expectedHash: verification.expectedHash,
+      actualHash: verification.actualHash,
+      isLocked: result.isLocked,
+      lockedAt: result.lockedAt,
+      submittedAt: result.submittedAt,
+      score: result.score,
+      percentage: result.percentage,
+      answerCount: result.answers?.length || 0,
+      warning: verification.valid ? null : 'Result appears to have been tampered with',
+      verification
+    });
+  } catch (error) {
+    console.error('Error verifying result integrity:', error);
+    res.status(500).json({ error: 'Failed to verify result integrity', details: error.message });
   }
 };

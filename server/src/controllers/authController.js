@@ -1,5 +1,6 @@
 ﻿import { User } from '../models/User.js';
 import { hashPassword, signToken } from '../middlewares/auth.js';
+import { createLoginSession } from '../middlewares/sessionManagement.js';
 import { OAuth2Client } from 'google-auth-library';
 import twilio from 'twilio';
 
@@ -90,6 +91,11 @@ export const register = async (req, res) => {
   }
 };
 
+/**
+ * Step 1: Login with email + password
+ * Returns temporary MFA token (not full access token)
+ * User must complete MFA in next step
+ */
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -105,14 +111,118 @@ export const login = async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
-    const token = signToken(user);
+    // Generate 6-digit OTP for MFA
+    const mfaOtp = generateOTP();
+    const mfaExpiryTime = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
     
-    res.json({ 
-      token, 
-      user: { id: user._id, name: user.name, email: user.email, role: user.role } 
+    // Store OTP temporarily in user document
+    user.mfaOtp = mfaOtp;
+    user.mfaOtpExpiry = mfaExpiryTime;
+    user.mfaRequired = true;
+    await user.save();
+    
+    // Send OTP via SMS
+    try {
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID') {
+        const client = getTwilioClient();
+        await client.messages.create({
+          body: `Your login verification code is: ${mfaOtp}. Valid for 10 minutes.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: user.phone
+        });
+        console.log(`✅ MFA OTP sent to ${user.phone}`);
+      } else {
+        console.log(`\n🔐 DEMO MODE - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
+      }
+    } catch (smsError) {
+      console.error('SMS send error:', smsError.message);
+      console.log(`\n🔐 DEMO MODE - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
+    }
+    
+    // Return temporary MFA token (not full access token)
+    // Client must use this token with OTP to get final access token
+    const mfaToken = signToken({ id: user._id, mfaRequired: true, email: user.email }, '10m');
+    
+    res.json({
+      message: 'Password verified. Please enter OTP sent to your phone.',
+      mfaToken, // Temporary token for MFA verification step
+      requiresMfa: true,
+      otpSentTo: `${user.phone.slice(-4).padStart(user.phone.length, '*')}`,
+      expiresIn: '10 minutes'
     });
   } catch (e) {
+    console.error('Login error:', e);
     res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+/**
+ * Step 2: Verify MFA OTP and complete login
+ * Client sends: mfaToken (from step 1) + otp
+ * Returns: Full access token with extended expiry
+ */
+export const verifyLoginMfa = async (req, res) => {
+  try {
+    const { userId, otp } = req.body;
+    
+    if (!userId || !otp) {
+      return res.status(400).json({ error: 'User ID and OTP required' });
+    }
+    
+    const user = await User.findById(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if OTP is expired
+    if (!user.mfaOtpExpiry || new Date() > user.mfaOtpExpiry) {
+      return res.status(400).json({ error: 'OTP expired. Please login again.' });
+    }
+    
+    // Check if OTP matches
+    if (user.mfaOtp !== otp) {
+      return res.status(401).json({ error: 'Invalid OTP. Please try again.' });
+    }
+    
+    // Clear MFA OTP
+    user.mfaOtp = null;
+    user.mfaOtpExpiry = null;
+    user.mfaRequired = false;
+    user.lastLoginAt = new Date();
+    await user.save();
+    
+    // Create login session
+    const userAgent = req.get('user-agent') || 'Unknown';
+    const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+    const deviceName = userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop';
+    
+    let sessionToken;
+    try {
+      sessionToken = await createLoginSession(user._id, userAgent, ipAddress, deviceName);
+    } catch (sessionError) {
+      console.error('Session creation error:', sessionError);
+      // Continue even if session creation fails - user can still access app
+    }
+    
+    // Return full access token
+    const token = signToken(user);
+    
+    res.json({
+      message: 'Login successful',
+      token,
+      sessionToken,
+      user: { 
+        id: user._id, 
+        name: user.name, 
+        email: user.email, 
+        role: user.role,
+        phone: user.phone
+      }
+    });
+  } catch (e) {
+    console.error('MFA verification error:', e);
+    res.status(500).json({ error: 'MFA verification failed' });
   }
 };
 
@@ -155,11 +265,25 @@ export const googleLogin = async (req, res) => {
       }
     }
     
+    // Create login session
+    const userAgent = req.get('user-agent') || 'Unknown';
+    const ipAddress = req.ip || req.connection.remoteAddress || 'Unknown';
+    const deviceName = userAgent.includes('Mobile') ? 'Mobile Device' : 'Desktop';
+    
+    let sessionToken;
+    try {
+      sessionToken = await createLoginSession(user._id, userAgent, ipAddress, deviceName);
+    } catch (sessionError) {
+      console.error('Session creation error:', sessionError);
+      // Continue even if session creation fails
+    }
+    
     const authToken = signToken(user);
     
     res.json({ 
       message: 'Google login successful',
-      token: authToken, 
+      token: authToken,
+      sessionToken,
       user: { id: user._id, name: user.name, email: user.email, role: user.role } 
     });
   } catch (error) {

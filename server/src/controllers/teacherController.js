@@ -1,6 +1,7 @@
 ﻿import { Exam } from '../models/Exam.js';
 import { Result } from '../models/Result.js';
 import { sha256, aesEncrypt } from '../utils/crypto.js';
+import { logAuditEvent, extractChanges } from '../utils/auditLog.js';
 
 export const createExam = async (req, res) => {
   try {
@@ -37,6 +38,18 @@ export const createExam = async (req, res) => {
       resultsReleaseDate: resultsReleaseDate ? new Date(resultsReleaseDate) : null,
       resultsReleaseMessage
     });
+    
+    // Log audit event
+    await logAuditEvent(
+      req,
+      req.user.id,
+      'exam_created',
+      'Exam',
+      exam._id,
+      null,
+      `Title: ${title}`,
+      'success'
+    );
     
     res.json(exam);
   } catch (e) {
@@ -95,6 +108,18 @@ export const finalizeExam = async (req, res) => {
     exam.chunks = chunks;
     exam.status = 'pending'; // Send to admin for approval
     await exam.save();
+
+    // Log audit event
+    await logAuditEvent(
+      req,
+      req.user.id,
+      'exam_finalized',
+      'Exam',
+      exam._id,
+      null,
+      `Questions: ${exam.questions.length}, Chunks: ${chunks.length}`,
+      'success'
+    );
 
     res.json({ examId: exam._id, chunks: chunks.map(c => ({ index: c.index, hash: c.hash, prevHash: c.prevHash })) });
   } catch (e) {

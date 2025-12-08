@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Search, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
-import { PageTransition, SlideUp } from './Animations';
+import { PageTransition, SlideUp } from '../components/Animations';
 import '../styles/QuestionBank.css';
 
 const QuestionBank = () => {

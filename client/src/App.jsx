@@ -12,33 +12,30 @@ import AdminDashboard from './pages/AdminDashboard_New.jsx';
 import StudentDashboard from './pages/StudentDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
 import { NotificationProvider } from './context/NotificationContext.jsx';
-import { ThemeProvider } from './context/ThemeContext.jsx';
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <NotificationProvider>
-        <Routes>
-        <Route element={<Layout />}>        
-          <Route index element={<Landing />} />
-          <Route path="login" element={<Login />} />
-          <Route path="register" element={<Register />} />
+    <NotificationProvider>
+      <Routes>
+      <Route element={<Layout />}>        
+        <Route index element={<Landing />} />
+        <Route path="login" element={<Login />} />
+        <Route path="register" element={<Register />} />
 
-          <Route element={<ProtectedRoute role="teacher" />}>          
-            <Route path="teacher" element={<TeacherDashboard />} />
-            <Route path="teacher/exams" element={<TeacherExams />} />
-            <Route path="teacher/analytics" element={<TeacherAnalytics />} />
-            <Route path="teacher/history" element={<TeacherHistory />} />
-          </Route>
-          <Route element={<ProtectedRoute role="admin" />}>          
-            <Route path="admin" element={<AdminDashboard />} />
-          </Route>
-          <Route element={<ProtectedRoute role="student" />}>          
-            <Route path="student" element={<StudentDashboard />} />
-          </Route>
+        <Route element={<ProtectedRoute role="teacher" />}>          
+          <Route path="teacher" element={<TeacherDashboard />} />
+          <Route path="teacher/exams" element={<TeacherExams />} />
+          <Route path="teacher/analytics" element={<TeacherAnalytics />} />
+          <Route path="teacher/history" element={<TeacherHistory />} />
         </Route>
-        </Routes>
-      </NotificationProvider>
-    </ThemeProvider>
+        <Route element={<ProtectedRoute role="admin" />}>          
+          <Route path="admin" element={<AdminDashboard />} />
+        </Route>
+        <Route element={<ProtectedRoute role="student" />}>          
+          <Route path="student" element={<StudentDashboard />} />
+        </Route>
+      </Route>
+      </Routes>
+    </NotificationProvider>
   );
 }

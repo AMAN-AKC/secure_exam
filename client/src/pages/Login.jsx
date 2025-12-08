@@ -16,10 +16,13 @@ export default function Login(){
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authMethod, setAuthMethod] = useState('password');
   const [googleLoaded, setGoogleLoaded] = useState(false);
+  const [mfaToken, setMfaToken] = useState(null); // Store MFA token from step 1
+  const [otpSentTo, setOtpSentTo] = useState(''); // Phone number OTP was sent to
   const callbackRef = useRef(null);
 
   // Google Login Handler
@@ -145,18 +148,67 @@ export default function Login(){
     }
   }, [authMethod, googleLoaded]);
 
-  // Password Login
-  const onSubmit = async (e) => { 
+  // Password Login - Step 1: Verify Password
+  const onSubmitStep1 = async (e) => { 
     e.preventDefault(); 
     setError('');
     setLoading(true);
     
     try {
-      const user = await login(email, password);
-      const path = user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/student';
+      // Step 1: Send email and password
+      const response = await api.post('/auth/login', { 
+        email, 
+        password 
+      });
+      
+      console.log('Step 1 response:', response.data);
+      
+      // Step 1 success: Store mfaToken and show OTP input
+      setMfaToken(response.data.mfaToken);
+      setOtpSentTo(response.data.otpSentTo);
+      setError(''); // Clear any previous errors
+    } catch (err) {
+      const errorMsg = err?.response?.data?.error || 'Login failed';
+      setError(errorMsg);
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Step 2: Verify MFA OTP
+  const onSubmitStep2 = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    
+    try {
+      if (!mfaToken) {
+        throw new Error('Session expired. Please login again.');
+      }
+      
+      if (!otp || otp.length < 4) {
+        throw new Error('Please enter a valid OTP');
+      }
+      
+      // Step 2: Verify OTP with mfaToken
+      const response = await api.post('/auth/login/verify-mfa', {
+        mfaToken,
+        otp
+      });
+      
+      console.log('Step 2 response:', response.data);
+      
+      const { token, user: userData } = response.data;
+      
+      // Success! Set user data and navigate
+      setUserData(userData, token);
+      const path = userData.role === 'admin' ? '/admin' : userData.role === 'teacher' ? '/teacher' : '/student';
       navigate(path, { replace: true });
     } catch (err) {
-      setError(err?.response?.data?.error || 'Login failed');
+      const errorMsg = err?.response?.data?.error || 'OTP verification failed';
+      setError(errorMsg);
+      console.error('MFA error:', err);
     } finally {
       setLoading(false);
     }
@@ -440,101 +492,231 @@ export default function Login(){
             
             {/* Password Login */}
             {authMethod === 'password' && (
-              <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>Email Address</label>
-                  <input 
-                    style={{
-                      width: '100%',
-                      padding: '0.875rem 1rem',
-                      fontSize: '1rem',
-                      border: '1.5px solid #e5e7eb',
+              <form onSubmit={mfaToken ? onSubmitStep2 : onSubmitStep1} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                {/* STEP 1: Email and Password */}
+                {!mfaToken ? (
+                  <>
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>Email Address</label>
+                      <input 
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem 1rem',
+                          fontSize: '1rem',
+                          border: '1.5px solid #e5e7eb',
+                          borderRadius: '0.75rem',
+                          transition: 'all 0.3s ease',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#7c3aed';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#e5e7eb';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        type="email"
+                        placeholder="name@example.com" 
+                        value={email} 
+                        onChange={(e) => setEmail(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>Password</label>
+                      <input 
+                        style={{
+                          width: '100%',
+                          padding: '0.875rem 1rem',
+                          fontSize: '1rem',
+                          border: '1.5px solid #e5e7eb',
+                          borderRadius: '0.75rem',
+                          transition: 'all 0.3s ease',
+                          boxSizing: 'border-box',
+                          fontFamily: 'inherit'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#7c3aed';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#e5e7eb';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        type="password" 
+                        placeholder="••••••••"
+                        value={password} 
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                      />
+                    </div>
+                    
+                    <button 
+                      type="submit" 
+                      disabled={loading}
+                      style={{
+                        width: '100%',
+                        padding: '1rem',
+                        marginTop: '0.5rem',
+                        fontSize: '1.05rem',
+                        fontWeight: '700',
+                        background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.875rem',
+                        cursor: loading ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 4px 15px rgba(124, 58, 237, 0.3)',
+                        opacity: loading ? 0.7 : 1,
+                        letterSpacing: '0.5px'
+                      }}
+                      onMouseEnter={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 25px rgba(124, 58, 237, 0.4)')}
+                      onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 15px rgba(124, 58, 237, 0.3)')}
+                    >
+                      {loading ? '⏳ Verifying...' : '🔓 Next: Verify with OTP'}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    {/* STEP 2: OTP Verification */}
+                    <div style={{
+                      padding: '1.25rem',
+                      background: '#ecfdf5',
+                      border: '1px solid #86efac',
                       borderRadius: '0.75rem',
-                      transition: 'all 0.3s ease',
-                      boxSizing: 'border-box',
-                      fontFamily: 'inherit'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#7c3aed';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#e5e7eb';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                    type="email"
-                    placeholder="name@example.com" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <label style={{
-                    display: 'block',
-                    fontSize: '0.9rem',
-                    fontWeight: '600',
-                    color: '#374151',
-                    marginBottom: '0.5rem'
-                  }}>Password</label>
-                  <input 
-                    style={{
-                      width: '100%',
-                      padding: '0.875rem 1rem',
-                      fontSize: '1rem',
-                      border: '1.5px solid #e5e7eb',
-                      borderRadius: '0.75rem',
-                      transition: 'all 0.3s ease',
-                      boxSizing: 'border-box',
-                      fontFamily: 'inherit'
-                    }}
-                    onFocus={(e) => {
-                      e.target.style.borderColor = '#7c3aed';
-                      e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
-                    }}
-                    onBlur={(e) => {
-                      e.target.style.borderColor = '#e5e7eb';
-                      e.target.style.boxShadow = 'none';
-                    }}
-                    type="password" 
-                    placeholder="••••••••"
-                    value={password} 
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                
-                <button 
-                  type="submit" 
-                  disabled={loading}
-                  style={{
-                    width: '100%',
-                    padding: '1rem',
-                    marginTop: '0.5rem',
-                    fontSize: '1.05rem',
-                    fontWeight: '700',
-                    background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '0.875rem',
-                    cursor: loading ? 'not-allowed' : 'pointer',
-                    transition: 'all 0.3s ease',
-                    boxShadow: '0 4px 15px rgba(124, 58, 237, 0.3)',
-                    opacity: loading ? 0.7 : 1,
-                    letterSpacing: '0.5px'
-                  }}
-                  onMouseEnter={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 25px rgba(124, 58, 237, 0.4)')}
-                  onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 15px rgba(124, 58, 237, 0.3)')}
-                >
-                  {loading ? '⏳ Signing In...' : '🔓 Sign In Securely'}
-                </button>
+                      marginBottom: '0.5rem'
+                    }}>
+                      <p style={{
+                        margin: 0,
+                        color: '#166534',
+                        fontSize: '0.95rem',
+                        fontWeight: '500'
+                      }}>
+                        ✅ Password verified!<br/>
+                        Enter the OTP sent to {otpSentTo}
+                      </p>
+                    </div>
+                    
+                    <div>
+                      <label style={{
+                        display: 'block',
+                        fontSize: '0.9rem',
+                        fontWeight: '600',
+                        color: '#374151',
+                        marginBottom: '0.5rem'
+                      }}>One-Time Password (OTP)</label>
+                      <input 
+                        style={{
+                          width: '100%',
+                          padding: '1rem 1rem',
+                          fontSize: '1.5rem',
+                          letterSpacing: '0.5rem',
+                          textAlign: 'center',
+                          border: '2px solid #e5e7eb',
+                          borderRadius: '0.75rem',
+                          transition: 'all 0.3s ease',
+                          boxSizing: 'border-box',
+                          fontFamily: 'monospace',
+                          fontWeight: '600'
+                        }}
+                        onFocus={(e) => {
+                          e.target.style.borderColor = '#7c3aed';
+                          e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.1)';
+                        }}
+                        onBlur={(e) => {
+                          e.target.style.borderColor = '#e5e7eb';
+                          e.target.style.boxShadow = 'none';
+                        }}
+                        type="text" 
+                        placeholder="000000"
+                        maxLength="6"
+                        value={otp} 
+                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                        required
+                      />
+                      <p style={{
+                        fontSize: '0.85rem',
+                        color: '#9ca3af',
+                        marginTop: '0.5rem',
+                        margin: '0.5rem 0 0 0'
+                      }}>
+                        Check your SMS or server logs (demo mode) for the code
+                      </p>
+                    </div>
+                    
+                    <button 
+                      type="submit" 
+                      disabled={loading || otp.length < 4}
+                      style={{
+                        width: '100%',
+                        padding: '1rem',
+                        marginTop: '0.5rem',
+                        fontSize: '1.05rem',
+                        fontWeight: '700',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '0.875rem',
+                        cursor: (loading || otp.length < 4) ? 'not-allowed' : 'pointer',
+                        transition: 'all 0.3s ease',
+                        boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+                        opacity: (loading || otp.length < 4) ? 0.7 : 1,
+                        letterSpacing: '0.5px'
+                      }}
+                      onMouseEnter={(e) => !(loading || otp.length < 4) && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.4)')}
+                      onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 15px rgba(16, 185, 129, 0.3)')}
+                    >
+                      {loading ? '⏳ Verifying OTP...' : '🔐 Verify & Login'}
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMfaToken(null);
+                        setOtp('');
+                        setOtpSentTo('');
+                        setError('');
+                      }}
+                      style={{
+                        width: '100%',
+                        padding: '0.75rem',
+                        fontSize: '0.95rem',
+                        fontWeight: '600',
+                        background: 'white',
+                        color: '#7c3aed',
+                        border: '1.5px solid #e5e7eb',
+                        borderRadius: '0.75rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.3s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.target.style.borderColor = '#7c3aed';
+                        e.target.style.background = '#f3f4f6';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.target.style.borderColor = '#e5e7eb';
+                        e.target.style.background = 'white';
+                      }}
+                    >
+                      ← Back to login
+                    </button>
+                  </>
+                )}
               </form>
             )}
 

@@ -1,8 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
 import api from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import './AdminDashboard.css';
+
+dayjs.extend(utc);
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -41,7 +44,7 @@ export default function AdminDashboard() {
         const formatUTCToIST = (utcDate) => {
           if (!utcDate) return 'N/A';
           // Use dayjs with UTC mode, then add 5:30 hours for IST
-          const dayjsUtc = dayjs.utc(utcDate);
+          const dayjsUtc = dayjs(utcDate).utc();
           const istTime = dayjsUtc.add(5, 'hour').add(30, 'minute');
           return istTime.format('DD/MM/YYYY, HH:mm:ss');
         };

@@ -974,7 +974,6 @@ export default function StudentDashboard(){
                             maxWidth: '50%'
                           }}>
                             ⏳ Results will be available on {result.hideReason ? (() => {
-                            ⏳ Results will be available on {result.hideReason ? (() => {
                               const formatTime = (date) => {
                                 if (!date) return 'N/A';
                                 const d = new Date(date);

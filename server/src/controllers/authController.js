@@ -123,7 +123,7 @@ export const login = async (req, res) => {
     
     // Send OTP via SMS
     try {
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID') {
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID' && user.phone) {
         const client = getTwilioClient();
         await client.messages.create({
           body: `Your login verification code is: ${mfaOtp}. Valid for 10 minutes.`,
@@ -143,11 +143,14 @@ export const login = async (req, res) => {
     // Client must use this token with OTP to get final access token
     const mfaToken = signToken({ id: user._id, mfaRequired: true, email: user.email }, '10m');
     
+    // Mask phone number safely (handle undefined phone)
+    const maskedPhone = user.phone ? `${user.phone.slice(-4).padStart(user.phone.length, '*')}` : 'SMS';
+    
     res.json({
       message: 'Password verified. Please enter OTP sent to your phone.',
       mfaToken, // Temporary token for MFA verification step
       requiresMfa: true,
-      otpSentTo: `${user.phone.slice(-4).padStart(user.phone.length, '*')}`,
+      otpSentTo: maskedPhone,
       expiresIn: '10 minutes'
     });
   } catch (e) {
@@ -337,7 +340,7 @@ export const sendPhoneVerification = async (req, res) => {
       console.log('- Auth Token:', process.env.TWILIO_AUTH_TOKEN ? '✓ Set' : '✗ Not set');
       console.log('- Phone Number:', process.env.TWILIO_PHONE_NUMBER);
       
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID') {
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID' && phone) {
         console.log(`Attempting to send SMS to ${phone}...`);
         const client = getTwilioClient();
         await client.messages.create({
@@ -436,7 +439,7 @@ export const resendVerificationCode = async (req, res) => {
     await user.save();
     
     try {
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID') {
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID' && user.phone) {
         await twilioClient.messages.create({
           body: `Your new verification code is: ${otp}. Valid for 10 minutes.`,
           from: process.env.TWILIO_PHONE_NUMBER,

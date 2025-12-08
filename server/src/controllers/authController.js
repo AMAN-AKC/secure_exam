@@ -142,7 +142,8 @@ export const login = async (req, res) => {
     
     // Return temporary MFA token (not full access token)
     // Client must use this token with OTP to get final access token
-    const mfaToken = signToken({ id: user._id, mfaRequired: true, email: user.email }, '10m');
+    const mfaTokenPayload = { id: user._id, mfaRequired: true, email: user.email };
+    const mfaToken = jwt.sign(mfaTokenPayload, process.env.JWT_SECRET, { expiresIn: '10m' });
     
     // Mask phone number safely (handle undefined phone)
     const maskedPhone = user.phone ? `${user.phone.slice(-4).padStart(user.phone.length, '*')}` : 'SMS';
@@ -169,6 +170,8 @@ export const verifyLoginMfa = async (req, res) => {
   try {
     const { mfaToken, otp } = req.body;
     
+    console.log('MFA Verification attempt:', { mfaToken: mfaToken?.substring(0, 20) + '...', otp: '***' });
+    
     if (!mfaToken || !otp) {
       return res.status(400).json({ error: 'MFA token and OTP required' });
     }
@@ -177,12 +180,17 @@ export const verifyLoginMfa = async (req, res) => {
     let tokenPayload;
     try {
       tokenPayload = jwt.verify(mfaToken, process.env.JWT_SECRET);
+      console.log('Token decoded successfully:', { id: tokenPayload.id, email: tokenPayload.email });
     } catch (tokenError) {
+      console.error('Token verification failed:', tokenError.message);
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
     
     const userId = tokenPayload.id;
+    console.log('Looking for user with ID:', userId);
+    
     const user = await User.findById(userId);
+    console.log('User found:', user ? `${user.email}` : 'NOT FOUND');
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

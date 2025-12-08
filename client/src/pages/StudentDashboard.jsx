@@ -86,20 +86,18 @@ export default function StudentDashboard(){
       const message = data.message || 'Registration successful. Check your schedule.';
       if (data.startTime && data.endTime) {
         // Convert UTC to IST (UTC+5:30)
-        const formatUTCToIST = (utcDate) => {
-          const date = new Date(utcDate);
-          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-          const day = String(istDate.getDate()).padStart(2, '0');
-          const month = String(istDate.getMonth() + 1).padStart(2, '0');
-          const year = istDate.getFullYear();
-          const hours = String(istDate.getHours()).padStart(2, '0');
-          const minutes = String(istDate.getMinutes()).padStart(2, '0');
+        const formatTime = (date) => {
+          const d = new Date(date);
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hours = String(d.getHours()).padStart(2, '0');
+          const minutes = String(d.getMinutes()).padStart(2, '0');
           return `${day}/${month}/${year} at ${hours}:${minutes}`;
         };
-        const startTime = formatUTCToIST(data.startTime);
+        const startTime = formatTime(data.startTime);
         const endTimeObj = new Date(data.endTime);
-        const endTimeIST = new Date(endTimeObj.getTime() + (5.5 * 60 * 60 * 1000));
-        const endTime = String(endTimeIST.getHours()).padStart(2, '0') + ':' + String(endTimeIST.getMinutes()).padStart(2, '0');
+        const endTime = String(endTimeObj.getHours()).padStart(2, '0') + ':' + String(endTimeObj.getMinutes()).padStart(2, '0');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
         alert(message);
@@ -678,16 +676,15 @@ export default function StudentDashboard(){
                   if (!exam || (!exam.id && !exam._id)) return null;
                   const examId = exam.id || exam._id;
                   
-                  // Helper function to format UTC date to IST (24-hour format)
-                  const formatUTCToIST = (utcDate) => {
-                    if (!utcDate) return 'N/A';
-                    const date = new Date(utcDate);
-                    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-                    const day = String(istDate.getDate()).padStart(2, '0');
-                    const month = String(istDate.getMonth() + 1).padStart(2, '0');
-                    const year = istDate.getFullYear();
-                    const hours = String(istDate.getHours()).padStart(2, '0');
-                    const minutes = String(istDate.getMinutes()).padStart(2, '0');
+                  // Helper function to format date (24-hour format)
+                  const formatTime = (date) => {
+                    if (!date) return 'N/A';
+                    const d = new Date(date);
+                    const day = String(d.getDate()).padStart(2, '0');
+                    const month = String(d.getMonth() + 1).padStart(2, '0');
+                    const year = d.getFullYear();
+                    const hours = String(d.getHours()).padStart(2, '0');
+                    const minutes = String(d.getMinutes()).padStart(2, '0');
                     return `${day}/${month}/${year} ${hours}:${minutes}`;
                   };
                   
@@ -733,7 +730,7 @@ export default function StudentDashboard(){
                             <span>⏱️ {exam.durationMinutes}min Duration</span>
                             <span>👨‍🏫 By {exam.createdBy?.name || 'Teacher'}</span>
                             {exam.availableFrom && (
-                              <span>📅 Reg: {formatUTCToIST(exam.availableFrom)}</span>
+                              <span>📅 Reg: {formatTime(exam.availableFrom)}</span>
                             )}
                           </div>
                         </div>
@@ -814,15 +811,14 @@ export default function StudentDashboard(){
                     const isUpcoming = startTime > now;
                     const isActive = now >= startTime && now <= endTime;
                     
-                    // Helper function to format UTC date to IST (24-hour format)
-                    const formatUTCToIST = (utcDate) => {
-                      const date = new Date(utcDate);
-                      const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-                      const day = String(istDate.getDate()).padStart(2, '0');
-                      const month = String(istDate.getMonth() + 1).padStart(2, '0');
-                      const year = istDate.getFullYear();
-                      const hours = String(istDate.getHours()).padStart(2, '0');
-                      const minutes = String(istDate.getMinutes()).padStart(2, '0');
+                    // Helper function to format date (24-hour format)
+                    const formatTime = (date) => {
+                      const d = new Date(date);
+                      const day = String(d.getDate()).padStart(2, '0');
+                      const month = String(d.getMonth() + 1).padStart(2, '0');
+                      const year = d.getFullYear();
+                      const hours = String(d.getHours()).padStart(2, '0');
+                      const minutes = String(d.getMinutes()).padStart(2, '0');
                       return `${day}/${month}/${year} ${hours}:${minutes}`;
                     };
                     
@@ -851,8 +847,8 @@ export default function StudentDashboard(){
                             fontSize: '0.9rem',
                             color: '#6b7280'
                           }}>
-                            <span>📅 {formatUTCToIST(startTime)}</span>
-                            <span>⏱️ {formatUTCToIST(startTime).split(' ')[1]} - {formatUTCToIST(endTime).split(' ')[1]}</span>
+                            <span>📅 {formatTime(startTime)}</span>
+                            <span>⏱️ {formatTime(startTime).split(' ')[1]} - {formatTime(endTime).split(' ')[1]}</span>
                             <span style={{
                               background: isActive ? '#10b981' : isUpcoming ? '#f59e0b' : '#9ca3af',
                               color: 'white',
@@ -964,7 +960,7 @@ export default function StudentDashboard(){
                             flexWrap: 'wrap',
                             marginBottom: '0.75rem'
                           }}>
-                            <span>📅 Submitted: {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>📅 Submitted: {new Date(result.submittedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: '2-digit' })}, {new Date(result.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
                           </div>
                           <div style={{
                             padding: '0.75rem 1rem',
@@ -978,21 +974,20 @@ export default function StudentDashboard(){
                             maxWidth: '50%'
                           }}>
                             ⏳ Results will be available on {result.hideReason ? (() => {
-                              const formatUTCToIST = (utcDate) => {
-                                if (!utcDate) return 'N/A';
-                                const date = new Date(utcDate);
-                                const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
-                                const day = String(istDate.getDate()).padStart(2, '0');
-                                const month = String(istDate.getMonth() + 1).padStart(2, '0');
-                                const year = istDate.getFullYear();
-                                const hours = String(istDate.getHours()).padStart(2, '0');
-                                const minutes = String(istDate.getMinutes()).padStart(2, '0');
-                                const seconds = String(istDate.getSeconds()).padStart(2, '0');
+                            ⏳ Results will be available on {result.hideReason ? (() => {
+                              const formatTime = (date) => {
+                                if (!date) return 'N/A';
+                                const d = new Date(date);
+                                const day = String(d.getDate()).padStart(2, '0');
+                                const month = String(d.getMonth() + 1).padStart(2, '0');
+                                const year = d.getFullYear();
+                                const hours = String(d.getHours()).padStart(2, '0');
+                                const minutes = String(d.getMinutes()).padStart(2, '0');
+                                const seconds = String(d.getSeconds()).padStart(2, '0');
                                 return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
                               };
-                              return formatUTCToIST(result.hideReason);
+                              return formatTime(result.hideReason);
                             })() : 'N/A'}
-                          </div>
                         </div>
                         <div style={{
                           textAlign: 'center',

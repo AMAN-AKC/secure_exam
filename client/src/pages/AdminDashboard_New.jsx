@@ -42,7 +42,7 @@ export default function AdminDashboard() {
       const formatUTCToIST = (utcDate) => {
         if (!utcDate) return 'N/A';
         // Use dayjs with UTC mode, then add 5:30 hours for IST
-        const dayjsUtc = dayjs(utcDate).utc();
+        const dayjsUtc = dayjs.utc(utcDate);
         const istTime = dayjsUtc.add(5, 'hour').add(30, 'minute');
         return istTime.format('DD/MM/YYYY, HH:mm:ss');
       };

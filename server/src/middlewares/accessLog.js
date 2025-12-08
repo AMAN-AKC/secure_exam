@@ -11,9 +11,18 @@ export const logResourceAccess = (resource) => async (req, res, next) => {
 
     if (resourceId && req.user) {
       // Determine action based on request method and context
-      let action = 'viewed_' + resource;
-      if (req.params.examId && req.path.includes('access')) action = 'accessed_exam';
-      if (req.params.examId && req.path.includes('submit')) action = 'submitted_exam';
+      let action;
+      if (req.params.examId && req.path.includes('access')) {
+        action = 'accessed_exam';
+      } else if (req.params.examId && req.path.includes('submit')) {
+        action = 'submitted_exam';
+      } else if (resource === 'exam') {
+        action = 'viewed_exam';
+      } else if (resource === 'result') {
+        action = 'viewed_results';
+      } else {
+        action = 'viewed_exam'; // fallback
+      }
 
       // Log asynchronously (don't block response)
       await AccessLog.logAccess(

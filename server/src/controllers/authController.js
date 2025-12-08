@@ -3,6 +3,7 @@ import { hashPassword, signToken } from '../middlewares/auth.js';
 import { createLoginSession } from '../middlewares/sessionManagement.js';
 import { OAuth2Client } from 'google-auth-library';
 import twilio from 'twilio';
+import jwt from 'jsonwebtoken';
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
@@ -166,12 +167,21 @@ export const login = async (req, res) => {
  */
 export const verifyLoginMfa = async (req, res) => {
   try {
-    const { userId, otp } = req.body;
+    const { mfaToken, otp } = req.body;
     
-    if (!userId || !otp) {
-      return res.status(400).json({ error: 'User ID and OTP required' });
+    if (!mfaToken || !otp) {
+      return res.status(400).json({ error: 'MFA token and OTP required' });
     }
     
+    // Verify and decode the mfaToken to get userId
+    let tokenPayload;
+    try {
+      tokenPayload = jwt.verify(mfaToken, process.env.JWT_SECRET);
+    } catch (tokenError) {
+      return res.status(401).json({ error: 'Session expired. Please login again.' });
+    }
+    
+    const userId = tokenPayload.id;
     const user = await User.findById(userId);
     
     if (!user) {

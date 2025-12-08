@@ -45,7 +45,6 @@ export async function seedAdminIfNeeded() {
   console.log('📧 Email: admin@secureexam.com');
   console.log('🔑 Password: admin@123456');
 }
-}
 
 export async function seedSampleData() {
   try {

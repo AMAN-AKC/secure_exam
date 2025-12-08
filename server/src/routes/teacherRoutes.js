@@ -17,7 +17,7 @@ router.post('/exams/:examId/finalize', finalizeExam);
 
 router.delete('/exams/:examId', deleteExam);
 router.get('/exams', logResourceAccess('exam'), listMyExams);
-router.get('/exams/:examId/results', logResourceAccess('exam_results'), getExamResults);
+router.get('/exams/:examId/results', logResourceAccess('result'), getExamResults);
 
 // Change tracking endpoints
 router.get('/exams/:examId/change-history', logResourceAccess('exam'), getExamChangeHistory); // View exam modifications

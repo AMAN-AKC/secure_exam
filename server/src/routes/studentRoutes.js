@@ -10,7 +10,7 @@ router.use(authMiddleware(), requireRole('student'));
 // Apply access logging to key GET endpoints
 router.get('/exams', logResourceAccess('exam'), listApprovedExams);
 router.post('/registrations', registerForExam);
-router.get('/registrations', logResourceAccess('exam_registration'), getScheduledExams);
+router.get('/registrations', logResourceAccess('exam'), getScheduledExams);
 router.get('/exams/:examId/access', logResourceAccess('exam'), accessExam);
 router.post('/exams/:examId/submit', submitExam);
 router.get('/results', logResourceAccess('result'), myResults);

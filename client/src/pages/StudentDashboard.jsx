@@ -973,7 +973,7 @@ export default function StudentDashboard(){
                             overflowWrap: 'break-word',
                             maxWidth: '50%'
                           }}>
-                            ⏳ Results will be available on {result.hideReason ? (() => {
+                            {(() => {
                               const formatTime = (date) => {
                                 if (!date) return 'N/A';
                                 const d = new Date(date);
@@ -985,8 +985,8 @@ export default function StudentDashboard(){
                                 const seconds = String(d.getSeconds()).padStart(2, '0');
                                 return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
                               };
-                              return formatTime(result.hideReason);
-                            })() : 'N/A'}
+                              return `⏳ Results will be available on ${result.hideReason ? formatTime(result.hideReason) : 'N/A'}`;
+                            })()}
                         </div>
                         <div style={{
                           textAlign: 'center',

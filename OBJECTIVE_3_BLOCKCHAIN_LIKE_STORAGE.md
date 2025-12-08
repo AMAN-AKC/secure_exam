@@ -1,9 +1,11 @@
 # OBJECTIVE 3: AUTOMATE SECURE STORAGE OF EXAM ANSWERS AND RESULTS ON TAMPER-PROOF BLOCKCHAIN-LIKE TECHNOLOGY
 
 ## Objective Statement
+
 **Integrate blockchain-like storage to maintain transparency, trust, and immutability of examination records**
 
 The system should:
+
 - Record exam submissions ensuring no unauthorized party can modify/delete them
 - Securely store evaluation results in a ledger
 - Prevent bias, tampering, or loss of data
@@ -17,7 +19,9 @@ The system should:
 ## Verification Status: ⚠️ **PARTIALLY MET** (45% Complete)
 
 ### Summary
+
 The objective is **partially implemented** with:
+
 - ✅ Strong blockchain-like hash chain for **question papers**
 - ⚠️ **Blockchain-inspired but incomplete** - Only question papers have hash chains, NOT answers/results
 - ❌ **No immutability on results** - Results can be modified after submission
@@ -40,24 +44,24 @@ export const finalizeExam = async (req, res) => {
   const questionChunks = splitIntoChunks(exam.questions, parts);
 
   const chunks = [];
-  let prevHash = 'GENESIS';
+  let prevHash = "GENESIS";
 
   questionChunks.forEach((qChunk, index) => {
     const payload = JSON.stringify({ questions: qChunk, prevHash, index });
     const currHash = sha256(payload);
     const enc = aesEncrypt(payload);
-    chunks.push({ 
-      index, 
-      prevHash,              // ✅ Previous chunk's hash
-      hash: currHash,        // ✅ Current chunk's hash (blockchain-style)
-      iv: enc.iv, 
-      cipherText: enc.cipherText 
+    chunks.push({
+      index,
+      prevHash, // ✅ Previous chunk's hash
+      hash: currHash, // ✅ Current chunk's hash (blockchain-style)
+      iv: enc.iv,
+      cipherText: enc.cipherText,
     });
-    prevHash = currHash;  // ✅ Chain continues
+    prevHash = currHash; // ✅ Chain continues
   });
 
   exam.chunks = chunks;
-  exam.status = 'pending';
+  exam.status = "pending";
   await exam.save();
 };
 ```
@@ -65,6 +69,7 @@ export const finalizeExam = async (req, res) => {
 ### 1.2 Blockchain Hash Chain Structure
 
 **Example Hash Chain:**
+
 ```
 GENESIS → hash₁ → hash₂ → hash₃ → hash₄ → hash₅
 
@@ -88,6 +93,7 @@ Chunk 2: {
 ```
 
 ✅ **Blockchain Properties Implemented:**
+
 - Hash chain linking (each chunk references previous)
 - Cryptographic hashing (SHA-256)
 - Immutability of chain (any change breaks all subsequent hashes)
@@ -98,43 +104,44 @@ Chunk 2: {
 **File:** `server/src/routes/debugRoutes.js` (Lines 309-383)
 
 ```javascript
-router.get('/validate-blockchain/:examId', async (req, res) => {
+router.get("/validate-blockchain/:examId", async (req, res) => {
   const exam = await Exam.findById(examId);
   const validationResults = [];
   let isBlockchainValid = true;
-  
+
   for (let i = 0; i < exam.chunks.length; i++) {
     const chunk = exam.chunks[i];
-    
+
     // Check prevHash matches previous chunk's hash
     if (i > 0) {
       const prevChunk = exam.chunks[i - 1];
       if (chunk.prevHash !== prevChunk.hash) {
-        validation.isValid = false;  // ✅ CHAIN BROKEN
+        validation.isValid = false; // ✅ CHAIN BROKEN
         isBlockchainValid = false;
       }
     }
-    
+
     // Verify content hash
     const decryptedPayload = aesDecrypt(chunk.iv, chunk.cipherText);
     const calculatedHash = sha256(decryptedPayload);
-    
+
     if (calculatedHash !== chunk.hash) {
-      validation.isValid = false;  // ✅ TAMPERING DETECTED
+      validation.isValid = false; // ✅ TAMPERING DETECTED
       isBlockchainValid = false;
     }
   }
-  
-  return { 
-    blockchainStatus: isBlockchainValid ? 'VALID' : 'COMPROMISED',
-    securityAssessment: isBlockchainValid 
-      ? 'Blockchain integrity confirmed'
-      : '🚨 SECURITY BREACH DETECTED - Blockchain compromised!'
+
+  return {
+    blockchainStatus: isBlockchainValid ? "VALID" : "COMPROMISED",
+    securityAssessment: isBlockchainValid
+      ? "Blockchain integrity confirmed"
+      : "🚨 SECURITY BREACH DETECTED - Blockchain compromised!",
   };
 });
 ```
 
 ✅ **Tamper Detection Working:**
+
 - Validates each chunk's hash against stored hash
 - Checks prevHash chain integrity
 - Detects any modification of encrypted content
@@ -145,33 +152,35 @@ router.get('/validate-blockchain/:examId', async (req, res) => {
 **File:** `server/src/routes/debugRoutes.js` (Lines 245-308)
 
 ```javascript
-router.post('/tamper-exam/:examId', async (req, res) => {
+router.post("/tamper-exam/:examId", async (req, res) => {
   // Tamper with chunk 2 (index 1)
   const tamperedChunk = exam.chunks[1];
   const originalCipherText = tamperedChunk.cipherText;
-  
+
   // Corrupt encrypted data
-  tamperedChunk.cipherText = Buffer.from(originalCipherText, 'base64')
-    .toString('hex')
-    .split('')
-    .map(char => char === 'a' ? 'b' : char === '1' ? '2' : char)
-    .join('')
+  tamperedChunk.cipherText = Buffer.from(originalCipherText, "base64")
+    .toString("hex")
+    .split("")
+    .map((char) => (char === "a" ? "b" : char === "1" ? "2" : char))
+    .join("")
     .substring(0, originalCipherText.length);
-  
+
   tamperedChunk.cipherText = Buffer.from(
-    tamperedChunk.cipherText.substring(0, 32), 'hex'
-  ).toString('base64');
-  
+    tamperedChunk.cipherText.substring(0, 32),
+    "hex"
+  ).toString("base64");
+
   await exam.save();
-  
+
   return {
-    message: 'Blockchain tampered! Hash chain integrity compromised',
-    integrityStatus: 'COMPROMISED - Hash chain broken!'
+    message: "Blockchain tampered! Hash chain integrity compromised",
+    integrityStatus: "COMPROMISED - Hash chain broken!",
   };
 });
 ```
 
 ✅ **Demonstration Proves:**
+
 - System can detect intentional tampering
 - Hash chain validation catches modifications
 - Developers can test tampering scenarios
@@ -197,11 +206,12 @@ const AnswerDetailSchema = new mongoose.Schema({
   studentAnswerIndex: { type: Number, default: null },
   studentAnswerText: { type: String, default: null },
   isCorrect: { type: Boolean, required: true },
-  points: { type: Number, default: 1 }
+  points: { type: Number, default: 1 },
 });
 ```
 
 ❌ **Missing:**
+
 - No hash chain for individual answers
 - No cryptographic linking between answers
 - No immutable ledger structure
@@ -215,16 +225,16 @@ const AnswerDetailSchema = new mongoose.Schema({
 export const submitExam = async (req, res) => {
   const { examId } = req.params;
   const { answers, timeTaken } = req.body;
-  
+
   // Calculate score on backend
   let score = 0;
   const detailedAnswers = [];
-  
+
   questions.forEach((q, i) => {
     const studentAnswerIndex = answers[i];
     const isCorrect = studentAnswerIndex === q.correctIndex;
     if (isCorrect) score += 1;
-    
+
     detailedAnswers.push({
       questionIndex: i,
       questionText: q.text,
@@ -232,21 +242,21 @@ export const submitExam = async (req, res) => {
       correctAnswerIndex: q.correctIndex,
       studentAnswerIndex: studentAnswerIndex,
       isCorrect: isCorrect,
-      points: 1
+      points: 1,
     });
   });
-  
+
   // Store in database
   const result = await Result.findOneAndUpdate(
     { student: req.user.id, exam: exam._id },
-    { 
-      score, 
-      total, 
+    {
+      score,
+      total,
       percentage,
       submittedAt: new Date(),
-      answers: detailedAnswers,  // ❌ Plain JSON - not in blockchain format
+      answers: detailedAnswers, // ❌ Plain JSON - not in blockchain format
       timeTaken: timeTaken || null,
-      examDuration: exam.durationMinutes || null
+      examDuration: exam.durationMinutes || null,
     },
     { new: true, upsert: true }
   );
@@ -254,6 +264,7 @@ export const submitExam = async (req, res) => {
 ```
 
 ❌ **Issues with Answer Storage:**
+
 1. **No Hash Chain:** Answers stored as plain array without cryptographic linking
 2. **Mutable:** Uses `findOneAndUpdate` with `upsert: true` - can be modified
 3. **No Encryption:** Answer details stored in plaintext in database
@@ -262,15 +273,15 @@ export const submitExam = async (req, res) => {
 
 ### 2.3 Answer Security Gaps
 
-| Requirement | Implemented? | Gap |
-|-------------|-------------|-----|
-| **Immutable storage** | ❌ | Results can be updated after submission |
-| **Hash chain** | ❌ | No cryptographic linking between answers |
-| **Ledger format** | ❌ | Standard MongoDB document, not ledger |
-| **Tamper detection** | ❌ | No way to verify answer integrity |
-| **Encryption** | ❌ | Answers stored in plaintext |
-| **Audit trail** | ❌ | No change history |
-| **Write-once storage** | ❌ | Can update with `findOneAndUpdate` |
+| Requirement            | Implemented? | Gap                                      |
+| ---------------------- | ------------ | ---------------------------------------- |
+| **Immutable storage**  | ❌           | Results can be updated after submission  |
+| **Hash chain**         | ❌           | No cryptographic linking between answers |
+| **Ledger format**      | ❌           | Standard MongoDB document, not ledger    |
+| **Tamper detection**   | ❌           | No way to verify answer integrity        |
+| **Encryption**         | ❌           | Answers stored in plaintext              |
+| **Audit trail**        | ❌           | No change history                        |
+| **Write-once storage** | ❌           | Can update with `findOneAndUpdate`       |
 
 ---
 
@@ -285,8 +296,12 @@ export const submitExam = async (req, res) => {
 ```javascript
 const ResultSchema = new mongoose.Schema(
   {
-    student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    exam: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam', required: true },
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    exam: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", required: true },
     score: { type: Number, required: true },
     total: { type: Number, required: true },
     percentage: { type: Number, required: true },
@@ -295,7 +310,7 @@ const ResultSchema = new mongoose.Schema(
     timeTaken: { type: Number },
     examDuration: { type: Number },
   },
-  { timestamps: true }  // ❌ Only tracks createdAt/updatedAt, doesn't prevent updates
+  { timestamps: true } // ❌ Only tracks createdAt/updatedAt, doesn't prevent updates
 );
 ```
 
@@ -306,18 +321,19 @@ const ResultSchema = new mongoose.Schema(
 ```javascript
 const result = await Result.findOneAndUpdate(
   { student: req.user.id, exam: exam._id },
-  { 
-    score,               // ⚠️ Can be modified
-    total,               // ⚠️ Can be modified
-    percentage,          // ⚠️ Can be modified
-    submittedAt,         // ⚠️ Can be modified
-    answers: detailedAnswers  // ⚠️ Can be modified
+  {
+    score, // ⚠️ Can be modified
+    total, // ⚠️ Can be modified
+    percentage, // ⚠️ Can be modified
+    submittedAt, // ⚠️ Can be modified
+    answers: detailedAnswers, // ⚠️ Can be modified
   },
-  { new: true, upsert: true }  // ⚠️ Allows updates
+  { new: true, upsert: true } // ⚠️ Allows updates
 );
 ```
 
 ❌ **Issues:**
+
 1. **Mutable:** Can be updated multiple times after submission
 2. **No Versioning:** Previous state not preserved
 3. **No Immutable Flag:** Nothing prevents modifications
@@ -325,15 +341,15 @@ const result = await Result.findOneAndUpdate(
 
 ### 3.3 Result Immutability Gaps
 
-| Feature | Status | Impact |
-|---------|--------|--------|
-| **Write-once** | ❌ | Results can be modified |
-| **Hash verification** | ❌ | No integrity proof |
-| **Immutable flag** | ❌ | No read-only state |
-| **Version history** | ❌ | Previous values lost |
-| **Ledger chain** | ❌ | Not blockchain-like |
-| **Tamper detection** | ❌ | Modifications undetectable |
-| **Audit log** | ❌ | Who/when changes unknown |
+| Feature               | Status | Impact                     |
+| --------------------- | ------ | -------------------------- |
+| **Write-once**        | ❌     | Results can be modified    |
+| **Hash verification** | ❌     | No integrity proof         |
+| **Immutable flag**    | ❌     | No read-only state         |
+| **Version history**   | ❌     | Previous values lost       |
+| **Ledger chain**      | ❌     | Not blockchain-like        |
+| **Tamper detection**  | ❌     | Modifications undetectable |
+| **Audit log**         | ❌     | Who/when changes unknown   |
 
 ---
 
@@ -344,6 +360,7 @@ const result = await Result.findOneAndUpdate(
 ### 4.1 Current vs. Required Architecture
 
 **Current (Non-Ledger):**
+
 ```
 MongoDB Document (Result)
 ├─ student: ObjectId
@@ -355,6 +372,7 @@ MongoDB Document (Result)
 ```
 
 **Required (Ledger-Like):**
+
 ```
 Ledger Entry (Result Block)
 ├─ resultId: UUID
@@ -375,28 +393,32 @@ Ledger Entry (Result Block)
 ### 4.2 Missing Ledger Features
 
 ❌ **No Result Hash Chain:**
+
 ```javascript
 // Should have:
-const resultHash = sha256(JSON.stringify({
-  student,
-  exam,
-  score,
-  percentage,
-  answers,
-  submittedAt
-}));
+const resultHash = sha256(
+  JSON.stringify({
+    student,
+    exam,
+    score,
+    percentage,
+    answers,
+    submittedAt,
+  })
+);
 
 // And store:
 const ledgerEntry = {
   resultHash,
-  previousResultHash,  // Reference to previous result (if any)
-  isLocked: true       // After first submission
+  previousResultHash, // Reference to previous result (if any)
+  isLocked: true, // After first submission
 };
 
 // But currently have: None of this
 ```
 
 ❌ **No Write-Once Semantics:**
+
 ```javascript
 // Should reject updates:
 if (result.isLocked) {
@@ -408,6 +430,7 @@ Result.findOneAndUpdate(...)  // Can update anytime
 ```
 
 ❌ **No Ledger Index:**
+
 ```javascript
 // Should maintain:
 ResultLedger = [
@@ -428,27 +451,30 @@ ResultLedger = [
 ### 5.1 Missing Audit Trail
 
 ❌ **No Change Log:**
+
 - No record of who accessed results
 - No record of when results were modified
 - No record of what changed
 - No previous value history
 
 ❌ **No Modification Tracking:**
+
 ```javascript
 // Should track:
 const auditEntry = {
   timestamp: new Date(),
   actor: user.id,
-  action: 'UPDATE',
+  action: "UPDATE",
   before: { score: 75, percentage: 75 },
   after: { score: 85, percentage: 85 },
-  reason: 'Manual correction'
+  reason: "Manual correction",
 };
 
 // But currently tracks: Nothing
 ```
 
 ❌ **No Transparency Log:**
+
 ```javascript
 // Should provide:
 GET /admin/results/:resultId/audit-trail
@@ -477,35 +503,39 @@ GET /admin/results/:resultId/audit-trail
 ### 6.1 Current Protections
 
 ✅ **MongoDB Persistence:**
+
 - Data persisted to disk
 - Database backups available
 - Data not lost on application restart
 
 ✅ **Submission Time Recording:**
+
 - `submittedAt` timestamp recorded
 - Can verify submission time
 - Cannot recover deleted results (no soft delete)
 
 ❌ **No Delete Protection:**
+
 - Results can be deleted from database
 - No soft delete mechanism
 - No trash/recovery system
 - No immutability preventing deletion
 
 ❌ **No Redundancy:**
+
 - Single database instance (in development)
 - No replication mentioned
 - No backup automation in code
 
 ### 6.2 Data Loss Scenarios
 
-| Scenario | Current Protection | Gap |
-|----------|-------------------|-----|
-| **Accidental deletion** | ❌ | No soft delete or trash |
-| **Malicious DB tampering** | ❌ | No immutability flag |
-| **Database corruption** | ⚠️ | Backup responsibility |
-| **Query injection** | ✅ | Uses ODM (Mongoose) |
-| **Direct modification** | ❌ | No audit trail |
+| Scenario                   | Current Protection | Gap                     |
+| -------------------------- | ------------------ | ----------------------- |
+| **Accidental deletion**    | ❌                 | No soft delete or trash |
+| **Malicious DB tampering** | ❌                 | No immutability flag    |
+| **Database corruption**    | ⚠️                 | Backup responsibility   |
+| **Query injection**        | ✅                 | Uses ODM (Mongoose)     |
+| **Direct modification**    | ❌                 | No audit trail          |
 
 ---
 
@@ -516,12 +546,14 @@ GET /admin/results/:resultId/audit-trail
 ### 7.1 What Works
 
 ✅ **Question Paper Transparency:**
+
 - Hash chain can be validated
 - Blockchain validation endpoint exists
 - Tamper detection works
 - Can verify question integrity
 
 ✅ **Result Visibility:**
+
 - Students can view their own results
 - Teachers can view class results
 - Admin can see all results
@@ -529,18 +561,21 @@ GET /admin/results/:resultId/audit-trail
 ### 7.2 What's Missing
 
 ❌ **No Result Verification:**
+
 - No endpoint to verify result integrity
 - No hash validation for answers
 - Cannot prove result wasn't modified
 - No cryptographic proof of authenticity
 
 ❌ **No Immutability Proof:**
+
 - No hash chain for results
 - Cannot verify "this result has never been changed"
 - No timestamps of changes
 - No audit trail to review
 
 ❌ **No Transparency Portal:**
+
 ```javascript
 // Missing:
 GET /verify/result/:resultId
@@ -558,30 +593,30 @@ GET /verify/result/:resultId
 
 ## 8. COMPARISON: QUESTIONS vs. ANSWERS/RESULTS
 
-| Feature | Questions | Answers | Results |
-|---------|-----------|---------|---------|
-| **Hash Chain** | ✅ YES | ❌ NO | ❌ NO |
-| **Immutable** | ✅ YES (via chain) | ❌ NO | ❌ NO |
-| **Encrypted** | ✅ YES (AES-256) | ❌ NO | ❌ NO |
-| **Tamper Detection** | ✅ YES | ❌ NO | ❌ NO |
-| **Audit Trail** | ❌ NO | ❌ NO | ❌ NO |
-| **Version History** | ❌ NO | ❌ NO | ❌ NO |
-| **Blockchain-like** | ✅ 80% | ❌ 0% | ❌ 0% |
+| Feature              | Questions          | Answers | Results |
+| -------------------- | ------------------ | ------- | ------- |
+| **Hash Chain**       | ✅ YES             | ❌ NO   | ❌ NO   |
+| **Immutable**        | ✅ YES (via chain) | ❌ NO   | ❌ NO   |
+| **Encrypted**        | ✅ YES (AES-256)   | ❌ NO   | ❌ NO   |
+| **Tamper Detection** | ✅ YES             | ❌ NO   | ❌ NO   |
+| **Audit Trail**      | ❌ NO              | ❌ NO   | ❌ NO   |
+| **Version History**  | ❌ NO              | ❌ NO   | ❌ NO   |
+| **Blockchain-like**  | ✅ 80%             | ❌ 0%   | ❌ 0%   |
 
 ---
 
 ## 9. IMPLEMENTATION STATUS MATRIX
 
-| Component | Status | Percentage | Evidence |
-|-----------|--------|-----------|----------|
-| **Question Paper Chain** | ✅ Full | 100% | finalizeExam, validate-blockchain |
-| **Answer Blockchain** | ❌ Missing | 0% | No hash chain in Result model |
-| **Result Blockchain** | ❌ Missing | 0% | No immutability, findOneAndUpdate used |
-| **Ledger Storage** | ❌ Missing | 0% | Standard MongoDB documents |
-| **Audit Trail** | ❌ Missing | 0% | No audit log model |
-| **Tamper Detection** | ✅ Partial | 50% | Questions only, not results |
-| **Write-Once** | ❌ Missing | 0% | Results mutable via upsert |
-| **Transparency** | ⚠️ Partial | 40% | Question validation exists, result verification missing |
+| Component                | Status     | Percentage | Evidence                                                |
+| ------------------------ | ---------- | ---------- | ------------------------------------------------------- |
+| **Question Paper Chain** | ✅ Full    | 100%       | finalizeExam, validate-blockchain                       |
+| **Answer Blockchain**    | ❌ Missing | 0%         | No hash chain in Result model                           |
+| **Result Blockchain**    | ❌ Missing | 0%         | No immutability, findOneAndUpdate used                  |
+| **Ledger Storage**       | ❌ Missing | 0%         | Standard MongoDB documents                              |
+| **Audit Trail**          | ❌ Missing | 0%         | No audit log model                                      |
+| **Tamper Detection**     | ✅ Partial | 50%        | Questions only, not results                             |
+| **Write-Once**           | ❌ Missing | 0%         | Results mutable via upsert                              |
+| **Transparency**         | ⚠️ Partial | 40%        | Question validation exists, result verification missing |
 
 ---
 
@@ -592,27 +627,27 @@ GET /verify/result/:resultId
 ```javascript
 // 1. Add hash chain to answers
 const answerChain = [];
-let prevAnswerHash = 'ANSWER_GENESIS';
+let prevAnswerHash = "ANSWER_GENESIS";
 
 detailedAnswers.forEach((answer, index) => {
   const answerPayload = JSON.stringify({
     answer,
     prevHash: prevAnswerHash,
-    index
+    index,
   });
   const answerHash = sha256(answerPayload);
   answerChain.push({
     index,
     prevHash: prevAnswerHash,
     hash: answerHash,
-    encryptedData: aesEncrypt(answerPayload)
+    encryptedData: aesEncrypt(answerPayload),
   });
   prevAnswerHash = answerHash;
 });
 
 // 2. Store in Result
 result.answerChain = answerChain;
-result.isLocked = true;  // Immutable after submission
+result.isLocked = true; // Immutable after submission
 ```
 
 ### 10.2 Result Immutability Implementation
@@ -624,12 +659,14 @@ const ResultSchema = new mongoose.Schema({
   resultHash: { type: String, required: true },
   previousResultHash: { type: String },
   isLocked: { type: Boolean, default: false },
-  auditTrail: [{
-    timestamp: Date,
-    action: String,
-    modifiedBy: mongoose.Schema.Types.ObjectId,
-    changes: Object
-  }]
+  auditTrail: [
+    {
+      timestamp: Date,
+      action: String,
+      modifiedBy: mongoose.Schema.Types.ObjectId,
+      changes: Object,
+    },
+  ],
 });
 
 // 2. Lock after submission
@@ -638,7 +675,7 @@ result.resultHash = sha256(JSON.stringify(result));
 
 // 3. Prevent updates
 if (result.isLocked) {
-  throw new Error('Result is immutable');
+  throw new Error("Result is immutable");
 }
 ```
 
@@ -658,8 +695,8 @@ const LedgerSchema = new mongoose.Schema({
     score,
     percentage,
     answers,
-    submittedAt
-  }
+    submittedAt,
+  },
 });
 
 // 2. Append-only operations
@@ -667,7 +704,7 @@ const ledgerEntry = new Ledger({
   resultHash,
   previousHash: lastLedgerEntry?.resultHash,
   ledgerIndex: lastIndex + 1,
-  immutableData: result
+  immutableData: result,
 });
 ```
 
@@ -686,48 +723,53 @@ const ledgerEntry = new Ledger({
 
 ### Requirements Checklist
 
-| Requirement | Met | Evidence |
-|-------------|-----|----------|
-| **Blockchain-like storage** | ⚠️ Partial | Questions only |
-| **Immutability** | ❌ NO | Results mutable |
-| **Tamper-proof** | ⚠️ Partial | Questions tamper-proof |
-| **Answer recording** | ✅ YES | Stored, but not blockchain-protected |
-| **Result storage** | ✅ YES | Stored, but not blockchain-protected |
-| **No unauthorized modification** | ❌ NO | Results can be modified via API |
-| **Transparency** | ⚠️ Partial | Question transparency works |
-| **Trust mechanism** | ⚠️ Partial | Hash chain for questions |
-| **Audit trail** | ❌ NO | No change log |
-| **Verification mechanism** | ⚠️ Partial | For questions, not results |
+| Requirement                      | Met        | Evidence                             |
+| -------------------------------- | ---------- | ------------------------------------ |
+| **Blockchain-like storage**      | ⚠️ Partial | Questions only                       |
+| **Immutability**                 | ❌ NO      | Results mutable                      |
+| **Tamper-proof**                 | ⚠️ Partial | Questions tamper-proof               |
+| **Answer recording**             | ✅ YES     | Stored, but not blockchain-protected |
+| **Result storage**               | ✅ YES     | Stored, but not blockchain-protected |
+| **No unauthorized modification** | ❌ NO      | Results can be modified via API      |
+| **Transparency**                 | ⚠️ Partial | Question transparency works          |
+| **Trust mechanism**              | ⚠️ Partial | Hash chain for questions             |
+| **Audit trail**                  | ❌ NO      | No change log                        |
+| **Verification mechanism**       | ⚠️ Partial | For questions, not results           |
 
 ---
 
 ## 12. CRITICAL GAPS SUMMARY
 
 ### Gap 1: No Answer Blockchain ❌ CRITICAL
+
 - Answers stored as plain JSON
 - No hash chain linking
 - No tamper detection for answers
 - Answers not immutable
 
 ### Gap 2: Results Not Immutable ❌ CRITICAL
+
 - Results can be updated after submission
 - No way to prevent modifications
 - No "frozen" state
 - MongoDB allows updates via upsert
 
 ### Gap 3: No Ledger Structure ❌ CRITICAL
+
 - Results stored as normal documents
 - Not append-only ledger entries
 - No chain linking between results
 - Cannot verify result sequence
 
 ### Gap 4: No Audit Trail ❌ CRITICAL
+
 - No logging of modifications
 - No access audit trail
 - No change history
 - Cannot track who/when/what changed
 
 ### Gap 5: No Result Verification ❌ IMPORTANT
+
 - No endpoint to verify result integrity
 - No hash validation available
 - Cannot cryptographically prove authenticity
@@ -740,6 +782,7 @@ const ledgerEntry = new Ledger({
 ### Confirmed Working:
 
 ✅ **Question Paper Blockchain:**
+
 - Hash chain with GENESIS → hash1 → hash2 → ...
 - Tamper detection via `/debug/validate-blockchain/:examId`
 - Tamper demonstration via `/debug/tamper-exam/:examId`
@@ -747,12 +790,14 @@ const ledgerEntry = new Ledger({
 - Hash chain broken on any modification
 
 ✅ **Answer Storage:**
+
 - Answers recorded at submission time
 - Detailed answer history saved
 - Correct/incorrect tracking
 - Points calculation
 
 ✅ **Result Storage:**
+
 - Results persisted to MongoDB
 - Score/percentage calculated
 - Timestamps recorded
@@ -774,12 +819,14 @@ const ledgerEntry = new Ledger({
 ### Overall Status: ⚠️ **PARTIALLY MET (45% Complete)**
 
 **What Works:**
+
 - ✅ Question papers have blockchain-like hash chain
 - ✅ Tamper detection for questions functional
 - ✅ Answers and results are stored
 - ✅ Automatic grading on backend
 
 **What Doesn't Work:**
+
 - ❌ Answers lack blockchain protection
 - ❌ Results lack blockchain protection
 - ❌ Results are mutable (not immutable)
@@ -790,6 +837,7 @@ const ledgerEntry = new Ledger({
 **Why This Doesn't Meet Full Objective:**
 
 The objective explicitly requires:
+
 1. **"Blockchain like storage"** → Only 33% implemented (questions only)
 2. **"Immutability of records"** → 0% implemented for results
 3. **"No unauthorized modification"** → Results can still be modified
@@ -801,9 +849,11 @@ The objective explicitly requires:
 ## 15. COMPARISON WITH OBJECTIVE REQUIREMENTS
 
 **Objective States:**
+
 > "The system integrates blockchain like storage to maintain transparency, trust, and immutability of examination records"
 
 **Current Reality:**
+
 - ✅ Question records: Blockchain-like
 - ❌ Answer records: Not blockchain-like
 - ❌ Result records: Not blockchain-like

@@ -1,6 +1,6 @@
 # OBJECTIVE 5: Efficient & Transparent Online Assessment Management
 
-**Objective:** *Facilitate efficient and transparent online assessment management for educational institutions. The system streamlines the entire examination workflow—from question paper creation to evaluation and result publishing—making the process quicker, more reliable, and transparent. With automated auditing, secure data tracking, and real-time monitoring, educational institutions can manage examinations more efficiently.*
+**Objective:** _Facilitate efficient and transparent online assessment management for educational institutions. The system streamlines the entire examination workflow—from question paper creation to evaluation and result publishing—making the process quicker, more reliable, and transparent. With automated auditing, secure data tracking, and real-time monitoring, educational institutions can manage examinations more efficiently._
 
 **Verification Date:** December 8, 2025
 
@@ -27,14 +27,15 @@ This objective aims to streamline examination workflows and provide transparency
 The system automates the entire exam creation workflow with 5 distinct stages:
 
 #### Stage 1: Draft Creation
+
 ```javascript
 // server/src/controllers/teacherController.js (Lines 1-40)
 export const createExam = async (req, res) => {
-  const exam = await Exam.create({ 
-    title, 
+  const exam = await Exam.create({
+    title,
     description,
-    createdBy: req.user.id, 
-    status: 'draft',  // ← Initially in draft state
+    createdBy: req.user.id,
+    status: "draft", // ← Initially in draft state
     durationMinutes,
     availableFrom,
     availableTo,
@@ -45,7 +46,7 @@ export const createExam = async (req, res) => {
     showResults,
     resultsReleaseType,
     resultsReleaseDate,
-    resultsReleaseMessage
+    resultsReleaseMessage,
   });
 };
 ```
@@ -53,94 +54,110 @@ export const createExam = async (req, res) => {
 **Workflow Step 1:** Teacher creates exam with all settings → Status: `draft`
 
 #### Stage 2: Question Addition & Configuration
+
 ```javascript
 // server/src/controllers/teacherController.js (Lines 42-56)
 export const addQuestion = async (req, res) => {
   const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
-  if (exam.status !== 'draft') return res.status(400).json({ error: 'Cannot modify finalized exam' });
-  
+  if (exam.status !== "draft")
+    return res.status(400).json({ error: "Cannot modify finalized exam" });
+
   exam.questions.push({ text, options, correctIndex });
   await exam.save();
 };
 ```
 
 **Workflow Step 2:** Teacher adds questions one by one (4-option MCQ format)
+
 - Only draft exams can be modified
 - Questions stored temporarily unencrypted until finalization
 
 #### Stage 3: Finalization & Encryption
+
 ```javascript
 // server/src/controllers/teacherController.js (Lines 74-96)
 export const finalizeExam = async (req, res) => {
   const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
-  
+
   // Split questions into 5 chunks
   const questionChunks = splitIntoChunks(exam.questions, 5);
-  
+
   // Create blockchain-like hash chain with encryption
   const chunks = [];
-  let prevHash = 'GENESIS';
-  
+  let prevHash = "GENESIS";
+
   questionChunks.forEach((qChunk, index) => {
     const payload = JSON.stringify({ questions: qChunk, prevHash, index });
-    const currHash = sha256(payload);  // ← SHA-256 hash
-    const enc = aesEncrypt(payload);   // ← AES-256-CBC encryption
-    chunks.push({ 
-      index, 
-      prevHash, 
-      hash: currHash, 
-      iv: enc.iv,        // Random IV for each chunk
-      cipherText: enc.cipherText 
+    const currHash = sha256(payload); // ← SHA-256 hash
+    const enc = aesEncrypt(payload); // ← AES-256-CBC encryption
+    chunks.push({
+      index,
+      prevHash,
+      hash: currHash,
+      iv: enc.iv, // Random IV for each chunk
+      cipherText: enc.cipherText,
     });
     prevHash = currHash;
   });
-  
+
   exam.chunks = chunks;
-  exam.status = 'pending'; // ← Automatically sent to admin approval
+  exam.status = "pending"; // ← Automatically sent to admin approval
   await exam.save();
 };
 ```
 
 **Workflow Step 3:** Automatic encryption and hash chain creation
+
 - Questions split into 5 chunks
 - Each chunk encrypted with AES-256-CBC + random IV
 - SHA-256 hash chain: GENESIS → hash₁ → hash₂ → ... → hash₅
 - Status automatically changes to `pending`
 
 #### Stage 4: Admin Review & Approval
+
 ```javascript
 // server/src/controllers/adminController.js (Lines 6-42)
 export const getPendingExams = async (_req, res) => {
-  const pendingExams = await Exam.find({ status: 'pending' })
-    .populate('createdBy', 'name email role')
+  const pendingExams = await Exam.find({ status: "pending" })
+    .populate("createdBy", "name email role")
     .sort({ createdAt: -1 });
-  
-  const examsWithStatus = pendingExams.map(exam => {
+
+  const examsWithStatus = pendingExams.map((exam) => {
     let canApprove = true;
     let expiryReason = null;
-    
+
     // Automated validation: Can admin still approve?
     if (exam.availableFrom && now >= new Date(exam.availableFrom)) {
       canApprove = false;
-      expiryReason = 'Registration period has already started';
+      expiryReason = "Registration period has already started";
     }
-    
-    if (exam.examStartTime && now >= new Date(new Date(exam.examStartTime).getTime() - 60 * 60 * 1000)) {
+
+    if (
+      exam.examStartTime &&
+      now >= new Date(new Date(exam.examStartTime).getTime() - 60 * 60 * 1000)
+    ) {
       canApprove = false;
-      expiryReason = 'Exam is scheduled to start within 1 hour';
+      expiryReason = "Exam is scheduled to start within 1 hour";
     }
-    
-    return { ...exam.toObject(), canApprove, expiryReason, isExpired: !canApprove };
+
+    return {
+      ...exam.toObject(),
+      canApprove,
+      expiryReason,
+      isExpired: !canApprove,
+    };
   });
 };
 ```
 
 **Workflow Step 4:** Admin dashboard shows pending exams with automated validation
+
 - Pre-approval checks: Registration period check, Exam start time check
 - Visual status indicators: `PENDING` or `EXPIRED`
 - One-click approval or batch approval functionality
 
 #### Stage 5: Distribution & Student Access
+
 ```javascript
 // server/src/models/Exam.js (Lines 38-49)
 availableFrom: { type: Date },  // ← Automatic registration window
@@ -150,6 +167,7 @@ examEndTime: { type: Date },    // ← Fixed schedule (optional)
 ```
 
 **Workflow Step 5:** Approved exams automatically available during designated time windows
+
 - Time-based automatic distribution to eligible students
 - Flexible scheduling with individual time slots OR fixed schedule
 - 5 automated time validations before student can access
@@ -162,26 +180,29 @@ const endTime = dayjs.utc(reg.endTime);
 
 // Check 1: Too early?
 if (now.isBefore(startTime)) {
-  return res.status(403).json({ error: 'Exam not yet available' });
+  return res.status(403).json({ error: "Exam not yet available" });
 }
 
 // Check 2: Too late?
 if (now.isAfter(endTime)) {
-  return res.status(403).json({ error: 'Exam time has expired' });
+  return res.status(403).json({ error: "Exam time has expired" });
 }
 
 // Check 3: Late entry allowed?
 if (exam.examStartTime && !exam.allowLateEntry) {
   const examScheduledStart = dayjs.utc(exam.examStartTime);
-  if (now.isAfter(examScheduledStart.add(15, 'minute'))) {
-    return res.status(403).json({ error: 'Late entry not permitted' });
+  if (now.isAfter(examScheduledStart.add(15, "minute"))) {
+    return res.status(403).json({ error: "Late entry not permitted" });
   }
 }
 
 // Check 4: Already submitted?
-const existingResult = await Result.findOne({ student: req.user.id, exam: examId });
+const existingResult = await Result.findOne({
+  student: req.user.id,
+  exam: examId,
+});
 if (existingResult) {
-  return res.status(400).json({ error: 'Exam already completed' });
+  return res.status(400).json({ error: "Exam already completed" });
 }
 ```
 
@@ -195,13 +216,13 @@ export const submitExam = async (req, res) => {
   // Automatic score calculation
   let score = 0;
   const detailedAnswers = [];
-  
+
   questions.forEach((q, i) => {
     const studentAnswerIndex = answers[i];
     const isCorrect = studentAnswerIndex === q.correctIndex;
-    
-    if (isCorrect) score++;  // ← Automatic scoring
-    
+
+    if (isCorrect) score++; // ← Automatic scoring
+
     detailedAnswers.push({
       questionIndex: i,
       questionText: q.text,
@@ -209,12 +230,13 @@ export const submitExam = async (req, res) => {
       correctAnswerIndex: q.correctIndex,
       correctAnswerText: q.options[q.correctIndex],
       studentAnswerIndex,
-      studentAnswerText: studentAnswerIndex !== null ? q.options[studentAnswerIndex] : null,
+      studentAnswerText:
+        studentAnswerIndex !== null ? q.options[studentAnswerIndex] : null,
       isCorrect,
-      points: 1
+      points: 1,
     });
   });
-  
+
   // Automatic result creation
   const result = await Result.create({
     student: req.user.id,
@@ -223,14 +245,15 @@ export const submitExam = async (req, res) => {
     total: questions.length,
     percentage: Math.round((score / questions.length) * 100),
     submittedAt: new Date(),
-    answers: detailedAnswers,  // ← Detailed answer tracking
+    answers: detailedAnswers, // ← Detailed answer tracking
     timeTaken,
-    examDuration: exam.durationMinutes
+    examDuration: exam.durationMinutes,
   });
 };
 ```
 
 **Automation Features:**
+
 - ✅ Automatic scoring (0% manual calculation)
 - ✅ Immediate result calculation
 - ✅ Automatic answer verification
@@ -246,10 +269,10 @@ Teachers can set result visibility with 3 release modes:
 
 ```javascript
 // server/src/models/Exam.js (Lines 43-49)
-resultsReleaseType: { 
-  type: String, 
+resultsReleaseType: {
+  type: String,
   enum: ['immediate', 'after_exam_ends', 'custom_date'],  // ← 3 modes
-  default: 'after_exam_ends' 
+  default: 'after_exam_ends'
 },
 resultsReleaseDate: { type: Date },      // Custom release date
 resultsReleaseMessage: { type: String }  // Optional transparency message
@@ -262,59 +285,67 @@ Students see results only when permitted, with clear reasons if hidden:
 ```javascript
 // server/src/controllers/studentController.js (Lines 340-425)
 export const myResults = async (req, res) => {
-  const visibleResults = results.map(result => {
+  const visibleResults = results.map((result) => {
     const exam = result.exam;
     const now = new Date();
-    
+
     // 1. Check if results are enabled
     if (!exam.showResults) {
       return {
         ...result.toObject(),
         resultsHidden: true,
-        hideReason: 'Results are not available for this exam'
+        hideReason: "Results are not available for this exam",
       };
     }
-    
+
     // 2. Check result release timing
     let resultsAvailable = false;
-    let hideReason = '';
-    
+    let hideReason = "";
+
     switch (exam.resultsReleaseType) {
-      case 'immediate':  // ← MODE 1
+      case "immediate": // ← MODE 1
         resultsAvailable = true;
         break;
-        
-      case 'after_exam_ends':  // ← MODE 2
+
+      case "after_exam_ends": // ← MODE 2
         if (exam.examEndTime) {
           // Auto-release after exam end time
-          resultsAvailable = now.getTime() >= new Date(exam.examEndTime).getTime();
-          hideReason = resultsAvailable ? '' : exam.examEndTime;  // Show when available
+          resultsAvailable =
+            now.getTime() >= new Date(exam.examEndTime).getTime();
+          hideReason = resultsAvailable ? "" : exam.examEndTime; // Show when available
         } else {
           resultsAvailable = true;
         }
         break;
-        
-      case 'custom_date':  // ← MODE 3
+
+      case "custom_date": // ← MODE 3
         if (exam.resultsReleaseDate) {
           const releaseTime = new Date(exam.resultsReleaseDate);
-          const examEndTime = exam.examEndTime ? new Date(exam.examEndTime) : new Date(result.submittedAt);
-          
+          const examEndTime = exam.examEndTime
+            ? new Date(exam.examEndTime)
+            : new Date(result.submittedAt);
+
           // Both conditions must be met
-          resultsAvailable = now.getTime() >= releaseTime.getTime() && 
-                           now.getTime() >= examEndTime.getTime();
-          
+          resultsAvailable =
+            now.getTime() >= releaseTime.getTime() &&
+            now.getTime() >= examEndTime.getTime();
+
           if (!resultsAvailable) {
-            const waitUntil = releaseTime.getTime() > examEndTime.getTime() ? releaseTime : examEndTime;
+            const waitUntil =
+              releaseTime.getTime() > examEndTime.getTime()
+                ? releaseTime
+                : examEndTime;
             hideReason = waitUntil;
           }
         } else {
-          resultsAvailable = exam.examEndTime ? 
-            now.getTime() >= new Date(exam.examEndTime).getTime() : true;
-          hideReason = resultsAvailable ? '' : (exam.examEndTime || '');
+          resultsAvailable = exam.examEndTime
+            ? now.getTime() >= new Date(exam.examEndTime).getTime()
+            : true;
+          hideReason = resultsAvailable ? "" : exam.examEndTime || "";
         }
         break;
     }
-    
+
     // 3. Return result or hidden result with message
     if (resultsAvailable) {
       return result.toObject();
@@ -324,12 +355,12 @@ export const myResults = async (req, res) => {
         exam: {
           _id: exam._id,
           title: exam.title,
-          description: exam.description
+          description: exam.description,
         },
         submittedAt: result.submittedAt,
         resultsHidden: true,
-        hideReason: hideReason,        // ← Why hidden
-        resultsReleaseMessage: exam.resultsReleaseMessage  // ← When available
+        hideReason: hideReason, // ← Why hidden
+        resultsReleaseMessage: exam.resultsReleaseMessage, // ← When available
       };
     }
   });
@@ -337,6 +368,7 @@ export const myResults = async (req, res) => {
 ```
 
 **Transparency Features:**
+
 - ✅ Clear "Results Hidden" indicator
 - ✅ Reason provided: "Results not available yet" OR scheduled release time
 - ✅ Custom message from teacher explaining why hidden
@@ -349,11 +381,11 @@ When results are available, complete transparency:
 ```javascript
 // server/src/controllers/studentController.js (Lines 440-510)
 export const getDetailedResult = async (req, res) => {
-  const result = await Result.findOne({ 
+  const result = await Result.findOne({
     _id: resultId,
-    student: req.user.id  // ← Access control
-  }).populate('exam', 'title');
-  
+    student: req.user.id, // ← Access control
+  }).populate("exam", "title");
+
   // Detailed answer breakdown with correct answer feedback
   // Each answer shows:
   // - Question text
@@ -365,6 +397,7 @@ export const getDetailedResult = async (req, res) => {
 ```
 
 **Result Data Visible to Student:**
+
 - Detailed answer breakdown (question by question)
 - Correct vs incorrect comparison
 - Score and percentage
@@ -394,6 +427,7 @@ export default function TeacherAnalytics() {
 ```
 
 **Real-Time Metrics Tracked:**
+
 - ✅ Total exams: Count of all teacher's exams
 - ✅ Students participated: Unique student count
 - ✅ Average score: Dynamic calculation from all results
@@ -404,18 +438,21 @@ export default function TeacherAnalytics() {
 ### 3.2 Analytics Dashboard Views
 
 #### Performance Trends Chart
+
 ```javascript
 // client/src/pages/TeacherAnalytics.jsx (Lines 195-230)
 // Weekly trend - DYNAMIC CALCULATION
 const weeklyData = {};
 for (let i = 6; i >= 0; i--) {
-  const date = now.subtract(i, 'days');
-  const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][date.day()];
+  const date = now.subtract(i, "days");
+  const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][date.day()];
   weeklyData[dayName] = { total: 0, count: 0 };
 }
 
-filteredResults.forEach(r => {
-  const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayjs(r.submittedAt).day()];
+filteredResults.forEach((r) => {
+  const dayName = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][
+    dayjs(r.submittedAt).day()
+  ];
   if (weeklyData[dayName]) {
     const score = r.percentage || r.score || 0;
     weeklyData[dayName].total += score;
@@ -425,11 +462,13 @@ filteredResults.forEach(r => {
 
 const weeklyTrend = Object.entries(weeklyData).map(([day, data]) => ({
   name: day,
-  avgScore: data.count > 0 ? Math.round((data.total / data.count) * 100) / 100 : 0,
+  avgScore:
+    data.count > 0 ? Math.round((data.total / data.count) * 100) / 100 : 0,
 }));
 ```
 
 **Charts Generated:**
+
 - 📊 **Weekly Performance Trend:** Line chart showing avg score per day
 - 📊 **Student Score Distribution:** Pie chart showing buckets (90-100%, 80-89%, etc.)
 - 📊 **Exam Rankings:** Top 5 exams by avg score
@@ -438,29 +477,35 @@ const weeklyTrend = Object.entries(weeklyData).map(([day, data]) => ({
 - 📊 **Recent Performance:** Last 10 submissions trend
 
 #### Filtering & Drill-Down
+
 ```javascript
 // client/src/pages/TeacherAnalytics.jsx (Lines 97-100)
-const [dateRange, setDateRange] = useState('all');  // ← 7days, 30days, 90days
-const [selectedExam, setSelectedExam] = useState('all');  // ← Exam-specific view
+const [dateRange, setDateRange] = useState("all"); // ← 7days, 30days, 90days
+const [selectedExam, setSelectedExam] = useState("all"); // ← Exam-specific view
 
 const calculateAnalytics = (examsData, resultsData) => {
   // Filter by date range
-  if (dateRange === '7days') {
-    filteredResults = resultsData.filter(r => dayjs(r.submittedAt).isAfter(now.subtract(7, 'days')));
-  } else if (dateRange === '30days') {
-    filteredResults = resultsData.filter(r => dayjs(r.submittedAt).isAfter(now.subtract(30, 'days')));
+  if (dateRange === "7days") {
+    filteredResults = resultsData.filter((r) =>
+      dayjs(r.submittedAt).isAfter(now.subtract(7, "days"))
+    );
+  } else if (dateRange === "30days") {
+    filteredResults = resultsData.filter((r) =>
+      dayjs(r.submittedAt).isAfter(now.subtract(30, "days"))
+    );
   }
-  
+
   // Filter by exam
-  if (selectedExam !== 'all') {
-    filteredResults = filteredResults.filter(r => r.examId === selectedExam);
+  if (selectedExam !== "all") {
+    filteredResults = filteredResults.filter((r) => r.examId === selectedExam);
   }
-  
+
   // Recalculate all analytics with filtered data
 };
 ```
 
 **Analytics Features:**
+
 - ✅ Time-based filtering: All time, 7 days, 30 days, 90 days
 - ✅ Exam-specific filtering: View analytics for one exam only
 - ✅ Dynamic recalculation: Charts update instantly on filter change
@@ -471,11 +516,11 @@ Admins have system-wide visibility:
 
 ```javascript
 // server/src/routes/debugRoutes.js (Lines 89-123)
-router.get('/stats', async (req, res) => {
+router.get("/stats", async (req, res) => {
   const examsByStatus = await Exam.aggregate([
-    { $group: { _id: '$status', count: { $sum: 1 } } }
+    { $group: { _id: "$status", count: { $sum: 1 } } },
   ]);
-  
+
   // Returns:
   // {
   //   examsByStatus: { 'draft': 5, 'pending': 2, 'approved': 15, 'expired': 1 },
@@ -488,6 +533,7 @@ router.get('/stats', async (req, res) => {
 ```
 
 **System-Wide Metrics:**
+
 - ✅ Total exams by status: Draft, Pending, Approved, Rejected, Expired
 - ✅ Total users by role: Students, Teachers, Admins
 - ✅ Database health: Quick overview of system state
@@ -497,66 +543,74 @@ router.get('/stats', async (req, res) => {
 ## 4. EXPORT & REPORTING FUNCTIONALITY
 
 ### 4.1 CSV Export
+
 ```javascript
 // client/src/pages/TeacherAnalytics.jsx (Lines 257-276)
 const exportCSV = () => {
-  let csv = 'Type,Name,Email,Metric,Value\n';
+  let csv = "Type,Name,Email,Metric,Value\n";
   csv += `Overall,Overall,Overall,Total Exams,${overallStats.totalExams}\n`;
   csv += `Overall,Overall,Overall,Students,${overallStats.totalStudentsParticipated}\n`;
   csv += `Overall,Overall,Overall,Average Score,${overallStats.averageScore}%\n`;
   csv += `Overall,Overall,Overall,Pass Rate,${overallStats.passRate}%\n`;
   csv += `Overall,Overall,Overall,Fail Rate,${overallStats.failRate}%\n`;
   csv += `Overall,Overall,Overall,Completion Rate,${overallStats.completionRate}%\n`;
-  
-  topStudents.forEach(s => {
+
+  topStudents.forEach((s) => {
     csv += `Student,${s.name},${s.email},Average Score,${s.avgScore}%\n`;
   });
-  
-  topExamsData.forEach(e => {
+
+  topExamsData.forEach((e) => {
     csv += `Exam,${e.title},N/A,Average Score,${e.avgScore}%\n`;
   });
-  
-  const link = document.createElement('a');
-  link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-  link.download = `analytics-${dayjs().format('YYYY-MM-DD')}.csv`;
+
+  const link = document.createElement("a");
+  link.href = "data:text/csv;charset=utf-8," + encodeURIComponent(csv);
+  link.download = `analytics-${dayjs().format("YYYY-MM-DD")}.csv`;
   link.click();
 };
 ```
 
 **CSV Export Contains:**
+
 - Overall statistics summary
 - Top students with scores
 - Exam-wise performance
 - Date-stamped filename
 
 ### 4.2 PDF Export
+
 ```javascript
 // client/src/pages/TeacherAnalytics.jsx (Lines 280-340)
 const exportPDF = () => {
   const pdf = new jsPDF();
-  
+
   // Title
   pdf.setFontSize(16);
   pdf.setTextColor(124, 58, 237);
-  pdf.text('Analytics Report', margin, yPos);
-  
+  pdf.text("Analytics Report", margin, yPos);
+
   // Date
   pdf.setFontSize(10);
   pdf.setTextColor(107, 114, 128);
-  pdf.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm')}`, margin, yPos);
-  
+  pdf.text(`Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`, margin, yPos);
+
   // Overall Statistics
-  pdf.text('Overall Statistics:', margin, yPos);
+  pdf.text("Overall Statistics:", margin, yPos);
   pdf.text(`Total Exams: ${overallStats.totalExams}`, margin + 2, yPos);
-  pdf.text(`Total Students: ${overallStats.totalStudentsParticipated}`, margin + 2, yPos);
+  pdf.text(
+    `Total Students: ${overallStats.totalStudentsParticipated}`,
+    margin + 2,
+    yPos
+  );
   pdf.text(`Average Score: ${overallStats.averageScore}%`, margin + 2, yPos);
   // ... more stats
-  
-  pdf.save(`analytics-report-${dayjs().format('YYYY-MM-DD')}.pdf`);
+
+  pdf.save(`analytics-report-${dayjs().format("YYYY-MM-DD")}.pdf`);
 };
 ```
 
 **PDF Report Includes:**
+
 - Professional header with title
 - Generation timestamp
 - Overall statistics
@@ -565,17 +619,18 @@ const exportPDF = () => {
 - Download with date-stamped filename
 
 ### 4.3 Activity History with Export
+
 ```javascript
 // client/src/pages/TeacherHistory.jsx (Lines 285-320)
 const exportCSV = () => {
-  let csv = 'Date,Event,Details\n';
+  let csv = "Date,Event,Details\n";
   // Export all activity records
 };
 
 const exportPDF = () => {
   const doc = new jsPDF();
-  doc.text('Activity History Report', 20, 15);
-  doc.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm')}`, 20, 25);
+  doc.text("Activity History Report", 20, 15);
+  doc.text(`Generated: ${dayjs().format("YYYY-MM-DD HH:mm")}`, 20, 25);
   // Export formatted activity report
 };
 ```
@@ -589,6 +644,7 @@ const exportPDF = () => {
 The system tracks comprehensive examination data:
 
 #### Exam Lifecycle Tracking
+
 ```javascript
 // server/src/models/Exam.js
 {
@@ -604,6 +660,7 @@ The system tracks comprehensive examination data:
 ```
 
 #### Student Submission Tracking
+
 ```javascript
 // server/src/models/Result.js
 {
@@ -621,6 +678,7 @@ The system tracks comprehensive examination data:
 ```
 
 #### Registration Tracking
+
 ```javascript
 // server/src/models/Registration.js
 {
@@ -634,6 +692,7 @@ The system tracks comprehensive examination data:
 ```
 
 **Data Tracked:**
+
 - ✅ Question paper creation time and creator
 - ✅ Exam status changes (draft → pending → approved)
 - ✅ Student registrations with timestamp
@@ -648,6 +707,7 @@ The system tracks comprehensive examination data:
 Critical audit features are **missing**:
 
 #### Missing Audit Trail
+
 ```javascript
 // ❌ NO AUDIT LOG COLLECTION
 // ❌ NO "WHO CHANGED WHAT WHEN" TRACKING
@@ -666,6 +726,7 @@ Critical audit features are **missing**:
 ```
 
 #### Missing Result Modification Tracking
+
 ```javascript
 // ❌ NO TRACKING OF RESULT CHANGES
 // Results are mutable with findOneAndUpdate
@@ -674,12 +735,13 @@ Critical audit features are **missing**:
 
 await Result.findOneAndUpdate(
   { student: req.user.id, exam: examId },
-  { score: newScore },  // ← Change has no audit trail
+  { score: newScore }, // ← Change has no audit trail
   { upsert: true }
 );
 ```
 
 #### Missing Transparency in Admin Actions
+
 ```javascript
 // ❌ NO RECORD OF ADMIN DECISIONS
 // Admin can:
@@ -688,7 +750,7 @@ await Result.findOneAndUpdate(
 // - Access any exam → No access logs
 
 // From server/src/routes/debugRoutes.js (Line 185-224)
-router.patch('/exam-status/:examId', async (req, res) => {
+router.patch("/exam-status/:examId", async (req, res) => {
   // Only tracks: status change
   // Does NOT track: who changed it, when, why
   exam.status = status;
@@ -721,6 +783,7 @@ Students have complete visibility:
 ```
 
 **Transparency Features:**
+
 - ✅ Exam metadata: Title, description, duration, questions count
 - ✅ Scheduling: Clear start/end times in IST
 - ✅ Results display: Question-by-question feedback
@@ -749,6 +812,7 @@ Teachers have comprehensive monitoring:
 ```
 
 **Analytics Available to Teacher:**
+
 - ✅ Real-time statistics dashboard
 - ✅ Per-exam performance metrics
 - ✅ Student-specific results
@@ -765,7 +829,7 @@ Admins have oversight but lack detailed audit:
 // 2. System statistics (total users, exams, etc.)
 // 3. Pending exams awaiting approval
 // 4. Ability to approve/reject exams
-// 
+//
 // Admin CANNOT see:
 // ❌ Approval history and reasoning
 // ❌ Who approved what exam and when
@@ -775,6 +839,7 @@ Admins have oversight but lack detailed audit:
 ```
 
 **Admin Dashboard Limitations:**
+
 - ✅ Pending exam approval interface
 - ✅ System-wide statistics
 - ✅ Exam blockchain validation (tamper detection)
@@ -789,45 +854,48 @@ Admins have oversight but lack detailed audit:
 ### 7.1 Manual Effort Reduction
 
 #### Before System (Manual Process)
+
 ```
 Week 1: Teacher creates question paper (3-4 hours)
         Prints, photocopies (1-2 hours)
-        
+
 Week 2: Exam conducted with invigilators (6 hours)
         Papers manually collected
-        
+
 Week 3: Answer keys prepared (2-3 hours)
         Manual marking by teacher (8-10 hours)
-        
+
 Week 4: Results entered into register (2-3 hours)
         Results announced to students (1-2 hours)
         Reports generated manually (3-4 hours)
-        
+
 Total: 27-32 hours + material costs
 ```
 
 #### With This System (Automated)
+
 ```
 Step 1: Create exam (30 min)
         Add questions (15-20 min)
         Configure settings (10 min)
         Finalize (1 min) ← Automatic encryption
         Submit for approval (1 min)
-        
+
 Step 2: Admin approval (1 min/exam)
-        
+
 Step 3: Students take exam (automatic)
         - Automatic scoring (0 seconds)
         - Automatic result calculation (0 seconds)
         - Automatic result release (configurable)
-        
+
 Step 4: View analytics (5 min)
         Export reports (1 min)
-        
+
 Total: ~1.5 hours + zero material costs
 ```
 
 **Efficiency Gains:**
+
 - ✅ 95% reduction in manual effort (27h → 1.5h)
 - ✅ 0% printing/distribution costs
 - ✅ 0% manual grading errors (automatic scoring)
@@ -895,12 +963,14 @@ The system lacks a dedicated audit log collection:
 ```
 
 **Impact:**
+
 - Cannot track "who approved which exam and when"
 - Cannot track "what changed in an exam and why"
 - Cannot track result modifications post-submission
 - Cannot justify admin decisions
 
 **Recommendation:** Implement AuditLog collection with:
+
 ```javascript
 {
   action: 'exam_approved' | 'exam_rejected' | 'result_viewed' | 'exam_modified',
@@ -926,12 +996,13 @@ Results can be modified after submission without audit:
 // ❌ CURRENT: Results are mutable
 await Result.findOneAndUpdate(
   { student: req.user.id, exam: examId },
-  { score: newScore },  // ← Can be changed!
+  { score: newScore }, // ← Can be changed!
   { upsert: true }
 );
 ```
 
 **Impact:**
+
 - Results are not tamper-proof
 - No way to detect if a result was modified
 - No way to revert to original submission
@@ -970,13 +1041,13 @@ No logging of who accessed what exam/result:
    - Registration: 2025-01-15 to 2025-01-20
    - Exam: 2025-01-21 10:00 AM to 11:30 AM
    - Results: Release after exam ends
-   
+
    ✓ Status: Draft
 
 2. Teacher Adds Questions
    - Questions 1-25 added with 4 options each
    - Correct answers configured
-   
+
    ✓ Status: Draft (modifiable)
 
 3. Teacher Finalizes Exam
@@ -1006,7 +1077,7 @@ No logging of who accessed what exam/result:
    - 5 time validations pass automatically
    - Questions decrypted and displayed
    - Student answers 25 questions in 90 minutes
-   
+
 7. Automatic Submission (2025-01-21 11:30 AM)
    - Timer expires, exam auto-submitted
    - OR Student manually clicks submit
@@ -1021,7 +1092,7 @@ No logging of who accessed what exam/result:
      * Score: 18/25 (72%)
      * Question-by-question breakdown
      * Correct answers highlighted
-   
+
 9. Teacher Analytics (2025-01-21 onwards)
    - Dashboard shows real-time statistics:
      * 200 registered students
@@ -1048,34 +1119,34 @@ No logging of who accessed what exam/result:
 
 ## COMPREHENSIVE ASSESSMENT TABLE
 
-| Feature | Status | Implementation | Notes |
-|---------|--------|-----------------|-------|
-| **Exam Creation** | ✅ | TeacherController.createExam | Automated status management |
-| **Question Management** | ✅ | TeacherController.addQuestion | Full CRUD before finalization |
-| **Auto Encryption** | ✅ | TeacherController.finalizeExam | AES-256-CBC with random IV |
-| **Hash Chain** | ✅ | Exam model + Crypto utils | Blockchain-like verification |
-| **Admin Approval** | ✅ | AdminController.getPendingExams | With automated pre-checks |
-| **Time-Based Distribution** | ✅ | StudentController.listApprovedExams | Automatic window enforcement |
-| **Student Registration** | ✅ | StudentController.registerForExam | With conflict detection |
-| **Exam Access Control** | ✅ | StudentController.accessExam | 5 automated validations |
-| **Auto Scoring** | ✅ | StudentController.submitExam | Zero manual calculation |
-| **Answer Tracking** | ✅ | Result model | Question-by-question detail |
-| **Result Storage** | ✅ | Result model + timestamps | Comprehensive data capture |
-| **Result Publishing - Config** | ✅ | Exam model (3 modes) | Immediate/After Exam/Custom date |
-| **Result Publishing - Enforcement** | ✅ | StudentController.myResults | Automatic visibility control |
-| **Result Display** | ✅ | StudentController.getDetailedResult | Full answer breakdown |
-| **Teacher Analytics** | ✅ | TeacherAnalytics component | Real-time with dynamic filtering |
-| **Analytics Charts** | ✅ | Recharts + custom calculations | 6+ chart types |
-| **CSV Export** | ✅ | TeacherAnalytics.exportCSV | Formatted with timestamp |
-| **PDF Export** | ✅ | TeacherAnalytics.exportPDF | Professional report format |
-| **Activity History** | ✅ | TeacherHistory component | Timeline view with export |
-| **Admin Dashboard** | ✅ | AdminDashboard component | System-wide oversight |
-| **System Statistics** | ✅ | /debug/stats endpoint | Real-time metrics |
-| **Blockchain Validation** | ✅ | /debug/validate-blockchain | Tamper detection |
-| ****Audit Trail**  | ❌ | MISSING | No change log collection |
-| **Admin Decision Logging** | ❌ | MISSING | No approval reasoning |
-| **Access Audit Trail** | ❌ | MISSING | No access logs |
-| **Result Modification Trail** | ❌ | MISSING | Results are mutable |
+| Feature                             | Status | Implementation                      | Notes                            |
+| ----------------------------------- | ------ | ----------------------------------- | -------------------------------- |
+| **Exam Creation**                   | ✅     | TeacherController.createExam        | Automated status management      |
+| **Question Management**             | ✅     | TeacherController.addQuestion       | Full CRUD before finalization    |
+| **Auto Encryption**                 | ✅     | TeacherController.finalizeExam      | AES-256-CBC with random IV       |
+| **Hash Chain**                      | ✅     | Exam model + Crypto utils           | Blockchain-like verification     |
+| **Admin Approval**                  | ✅     | AdminController.getPendingExams     | With automated pre-checks        |
+| **Time-Based Distribution**         | ✅     | StudentController.listApprovedExams | Automatic window enforcement     |
+| **Student Registration**            | ✅     | StudentController.registerForExam   | With conflict detection          |
+| **Exam Access Control**             | ✅     | StudentController.accessExam        | 5 automated validations          |
+| **Auto Scoring**                    | ✅     | StudentController.submitExam        | Zero manual calculation          |
+| **Answer Tracking**                 | ✅     | Result model                        | Question-by-question detail      |
+| **Result Storage**                  | ✅     | Result model + timestamps           | Comprehensive data capture       |
+| **Result Publishing - Config**      | ✅     | Exam model (3 modes)                | Immediate/After Exam/Custom date |
+| **Result Publishing - Enforcement** | ✅     | StudentController.myResults         | Automatic visibility control     |
+| **Result Display**                  | ✅     | StudentController.getDetailedResult | Full answer breakdown            |
+| **Teacher Analytics**               | ✅     | TeacherAnalytics component          | Real-time with dynamic filtering |
+| **Analytics Charts**                | ✅     | Recharts + custom calculations      | 6+ chart types                   |
+| **CSV Export**                      | ✅     | TeacherAnalytics.exportCSV          | Formatted with timestamp         |
+| **PDF Export**                      | ✅     | TeacherAnalytics.exportPDF          | Professional report format       |
+| **Activity History**                | ✅     | TeacherHistory component            | Timeline view with export        |
+| **Admin Dashboard**                 | ✅     | AdminDashboard component            | System-wide oversight            |
+| **System Statistics**               | ✅     | /debug/stats endpoint               | Real-time metrics                |
+| **Blockchain Validation**           | ✅     | /debug/validate-blockchain          | Tamper detection                 |
+| \***\*Audit Trail**                 | ❌     | MISSING                             | No change log collection         |
+| **Admin Decision Logging**          | ❌     | MISSING                             | No approval reasoning            |
+| **Access Audit Trail**              | ❌     | MISSING                             | No access logs                   |
+| **Result Modification Trail**       | ❌     | MISSING                             | Results are mutable              |
 
 ---
 
@@ -1126,17 +1197,18 @@ The system is **production-ready** for operational use with a recommendation to 
 ## RECOMMENDATIONS FOR FULL IMPLEMENTATION (100%)
 
 ### Priority 1: Implement AuditLog Collection (HIGH)
+
 ```javascript
 // Add to server/src/models/AuditLog.js
 const AuditLogSchema = new mongoose.Schema({
-  action: String,  // 'exam_created', 'exam_approved', 'exam_modified', etc.
-  actor: ObjectId (User),
-  target: ObjectId (Exam/Result),
-  targetType: String,  // 'Exam' | 'Result'
-  changes: Object,  // { before, after }
+  action: String, // 'exam_created', 'exam_approved', 'exam_modified', etc.
+  actor: ObjectId(User),
+  target: ObjectId(Exam / Result),
+  targetType: String, // 'Exam' | 'Result'
+  changes: Object, // { before, after }
   reason: String,
   timestamp: { type: Date, default: Date.now },
-  ipAddress: String
+  ipAddress: String,
 });
 ```
 
@@ -1144,6 +1216,7 @@ const AuditLogSchema = new mongoose.Schema({
 **Impact:** Addresses transparency gap
 
 ### Priority 2: Make Results Immutable (MEDIUM)
+
 - Add `resultHash` field
 - Add `isLocked` flag once submitted
 - Prevent modifications post-submission
@@ -1153,6 +1226,7 @@ const AuditLogSchema = new mongoose.Schema({
 **Impact:** Addresses data integrity
 
 ### Priority 3: Add Access Logging (MEDIUM)
+
 - Log exam access with timestamp
 - Log result viewing with timestamp
 - Provide admin audit dashboard
@@ -1165,6 +1239,7 @@ const AuditLogSchema = new mongoose.Schema({
 ## CODE ARTIFACTS & REFERENCES
 
 ### Key Files Reviewed
+
 - `server/src/models/Exam.js` - Exam schema with 3 result release modes
 - `server/src/models/Result.js` - Detailed answer tracking
 - `server/src/controllers/teacherController.js` - Workflow automation
@@ -1175,6 +1250,7 @@ const AuditLogSchema = new mongoose.Schema({
 - `client/src/pages/AdminDashboard.jsx` - System monitoring (303 lines)
 
 ### Tested Endpoints
+
 - `POST /teacher/exams` - Create exam
 - `POST /teacher/exams/:examId/questions` - Add question
 - `POST /teacher/exams/:examId/finalize` - Encrypt and finalize
@@ -1199,6 +1275,6 @@ The Secure Exam System **successfully fulfills the objective** of providing effi
 
 ---
 
-*Document Generated: December 8, 2025*
-*Verification Methodology: Complete source code audit + workflow simulation*
-*Assessment Level: Comprehensive (All features tested)*
+_Document Generated: December 8, 2025_
+_Verification Methodology: Complete source code audit + workflow simulation_
+_Assessment Level: Comprehensive (All features tested)_

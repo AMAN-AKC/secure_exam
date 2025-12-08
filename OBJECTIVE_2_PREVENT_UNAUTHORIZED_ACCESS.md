@@ -1,9 +1,11 @@
 # OBJECTIVE 2: PREVENT UNAUTHORIZED ACCESS, QUESTION PAPER LEAKS, AND RESULT TAMPERING
 
 ## Objective Statement
+
 **Eliminate security risks such as unauthorized access, manipulation, or leakage of critical exam data**
 
 The system aims to:
+
 - Implement multi-factor authentication (MFA)
 - Establish strict role-based access control (RBAC)
 - Enable encrypted data transmission
@@ -17,7 +19,9 @@ The system aims to:
 ## Verification Status: ⚠️ **PARTIALLY MET** (70% Complete)
 
 ### Summary
+
 The objective is **largely implemented** with strong authentication, authorization, and encryption, but has **critical gaps** in:
+
 1. **Multi-Factor Authentication (MFA):** ⚠️ **INCOMPLETE** - Only phone OTP for registration, not for login
 2. **Immutability Mechanisms:** ❌ **NOT IMPLEMENTED** - Results are mutable and can be updated
 3. **Result Tampering Protection:** ❌ **NOT IMPLEMENTED** - No blockchain-style hash chains on results
@@ -50,12 +54,14 @@ console.log(`\n🔐 DEMO MODE - Verification Code for ${user.phone}: ${otp}\n`);
 ### 1.2 MFA Implementation Analysis
 
 ✅ **Phone OTP Verification (During Registration Only):**
+
 - 6-digit random OTP generated
 - 10-minute expiration
 - Twilio integration for SMS delivery (production)
 - Demo mode for testing
 
 ❌ **CRITICAL GAP: No MFA on Login**
+
 - Login only requires email + password
 - No additional authentication factor on login
 - Users can be compromised if password is stolen
@@ -68,18 +74,18 @@ console.log(`\n🔐 DEMO MODE - Verification Code for ${user.phone}: ${otp}\n`);
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
-    
+
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     // Only password verification - NO additional factor
     const isValid = await bcrypt.compare(password, user.passwordHash);
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
-    
+
     const token = signToken(user);
     res.json({ token, user });  // ❌ Direct access without MFA
   }
@@ -88,17 +94,18 @@ export const login = async (req, res) => {
 
 ### 1.3 Impact Assessment
 
-| Scenario | Current | Issue |
-|----------|---------|-------|
-| **User registers** | OTP verification | ✅ Protected |
-| **User logs in** | Password only | ❌ Single factor - vulnerable to credential theft |
-| **Admin logs in** | Password only | ❌ Sensitive role - should require MFA |
-| **Teacher creates exam** | JWT token from login | ❌ No re-verification |
-| **Admin approves exam** | JWT token from login | ❌ No additional verification |
+| Scenario                 | Current              | Issue                                             |
+| ------------------------ | -------------------- | ------------------------------------------------- |
+| **User registers**       | OTP verification     | ✅ Protected                                      |
+| **User logs in**         | Password only        | ❌ Single factor - vulnerable to credential theft |
+| **Admin logs in**        | Password only        | ❌ Sensitive role - should require MFA            |
+| **Teacher creates exam** | JWT token from login | ❌ No re-verification                             |
+| **Admin approves exam**  | JWT token from login | ❌ No additional verification                     |
 
 ### 1.4 Recommendation for Objective Compliance
 
 To achieve full MFA compliance:
+
 - Implement OTP verification on login (email or SMS)
 - Implement TOTP (Time-based OTP) for admin/teacher accounts
 - Require MFA for sensitive operations (exam approval, result release)
@@ -121,6 +128,7 @@ role: { type: String, enum: ['student', 'teacher', 'admin'], required: true }
 ```
 
 Supported roles:
+
 - **student:** Can register, take exams, view results
 - **teacher:** Can create exams, view results for their exams
 - **admin:** Can approve exams, manage users
@@ -130,19 +138,19 @@ Supported roles:
 **File:** `server/src/routes/teacherRoutes.js`
 
 ```javascript
-router.use(authMiddleware(), requireRole('teacher'));
+router.use(authMiddleware(), requireRole("teacher"));
 ```
 
 **File:** `server/src/routes/adminRoutes.js`
 
 ```javascript
-router.use(authMiddleware(), requireRole('admin'));
+router.use(authMiddleware(), requireRole("admin"));
 ```
 
 **File:** `server/src/routes/studentRoutes.js`
 
 ```javascript
-router.use(authMiddleware(), requireRole('student'));
+router.use(authMiddleware(), requireRole("student"));
 ```
 
 ### 2.3 Middleware Implementation
@@ -153,7 +161,7 @@ router.use(authMiddleware(), requireRole('student'));
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: "Unauthorized" });
     }
     next();
   };
@@ -163,6 +171,7 @@ export function requireRole(...roles) {
 ### 2.4 Access Control Enforcement Examples
 
 ✅ **Teacher Operations (Protected):**
+
 ```
 POST   /teacher/exams              → requireRole('teacher') ✅
 POST   /teacher/exams/:id/questions → requireRole('teacher') ✅
@@ -170,12 +179,14 @@ POST   /teacher/exams/:id/finalize  → requireRole('teacher') ✅
 ```
 
 ✅ **Admin Operations (Protected):**
+
 ```
 GET    /admin/exams/pending         → requireRole('admin') ✅
 POST   /admin/exams/:id/approve     → requireRole('admin') ✅
 ```
 
 ✅ **Student Operations (Protected):**
+
 ```
 GET    /student/exams              → requireRole('student') ✅
 POST   /student/registrations      → requireRole('student') ✅
@@ -189,7 +200,7 @@ POST   /student/exams/:id/submit   → requireRole('student') ✅
 ```javascript
 // File: server/src/controllers/teacherController.js
 const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
-if (!exam) return res.status(404).json({ error: 'Exam not found' });
+if (!exam) return res.status(404).json({ error: "Exam not found" });
 ```
 
 ✅ **Status:** RBAC fully implemented and working correctly
@@ -205,14 +216,16 @@ if (!exam) return res.status(404).json({ error: 'Exam not found' });
 **File:** `server/src/server.js`
 
 ```javascript
-app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'http://localhost:3000',
-    'https://secure-exam-theta.vercel.app'
-  ],
-  credentials: true
-}));
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://secure-exam-theta.vercel.app",
+    ],
+    credentials: true,
+  })
+);
 ```
 
 ✅ **Credentials:** `credentials: true` enables secure cookie/token transmission
@@ -223,12 +236,18 @@ app.use(cors({
 
 ```javascript
 export function signToken(user) {
-  const payload = { id: user._id, role: user.role, email: user.email, name: user.name };
-  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
+  const payload = {
+    id: user._id,
+    role: user.role,
+    email: user.email,
+    name: user.name,
+  };
+  return jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" });
 }
 ```
 
 ✅ **JWT Security:**
+
 - Signed with SECRET key (environment variable)
 - 7-day expiration
 - Contains user identity and role
@@ -237,6 +256,7 @@ export function signToken(user) {
 ### 3.3 Production HTTPS
 
 ⚠️ **Note:** HTTPS enforcement in production depends on deployment platform:
+
 - ✅ Vercel deployment uses HTTPS automatically
 - ✅ Environment configurable for HTTP/HTTPS
 - ⚠️ Not explicitly enforced in code (deployment responsibility)
@@ -268,27 +288,28 @@ POST /student/exams/:examId/submit
 
 ```javascript
 const chunks = [];
-let prevHash = 'GENESIS';
+let prevHash = "GENESIS";
 
 questionChunks.forEach((qChunk, index) => {
   const payload = JSON.stringify({ questions: qChunk, prevHash, index });
   const currHash = sha256(payload);
   const enc = aesEncrypt(payload);
-  chunks.push({ 
-    index, 
-    prevHash,              // ✅ Hash chain
-    hash: currHash,        // ✅ Current hash
-    iv: enc.iv, 
-    cipherText: enc.cipherText 
+  chunks.push({
+    index,
+    prevHash, // ✅ Hash chain
+    hash: currHash, // ✅ Current hash
+    iv: enc.iv,
+    cipherText: enc.cipherText,
   });
-  prevHash = currHash;  // ✅ Chain continues
+  prevHash = currHash; // ✅ Chain continues
 });
 
 exam.chunks = chunks;
-exam.status = 'pending';
+exam.status = "pending";
 ```
 
 ✅ **Question Paper Protection:**
+
 - SHA-256 hash chain prevents tampering
 - Each chunk references previous chunk's hash
 - Any modification breaks the chain
@@ -301,8 +322,12 @@ exam.status = 'pending';
 ```javascript
 const ResultSchema = new mongoose.Schema(
   {
-    student: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-    exam: { type: mongoose.Schema.Types.ObjectId, ref: 'Exam', required: true },
+    student: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    exam: { type: mongoose.Schema.Types.ObjectId, ref: "Exam", required: true },
     score: { type: Number, required: true },
     total: { type: Number, required: true },
     percentage: { type: Number, required: true },
@@ -311,7 +336,7 @@ const ResultSchema = new mongoose.Schema(
     timeTaken: { type: Number },
     examDuration: { type: Number },
   },
-  { timestamps: true }  // ❌ Default timestamps - not immutable
+  { timestamps: true } // ❌ Default timestamps - not immutable
 );
 ```
 
@@ -323,24 +348,26 @@ const ResultSchema = new mongoose.Schema(
 // File: server/src/controllers/studentController.js
 const result = await Result.findOneAndUpdate(
   { student: req.user.id, exam: exam._id },
-  { 
-    score,                    // ⚠️ Can be modified
-    total,                    // ⚠️ Can be modified
-    percentage,               // ⚠️ Can be modified
-    submittedAt: new Date(),  // ⚠️ Can be modified
+  {
+    score, // ⚠️ Can be modified
+    total, // ⚠️ Can be modified
+    percentage, // ⚠️ Can be modified
+    submittedAt: new Date(), // ⚠️ Can be modified
     answers: detailedAnswers, // ⚠️ Can be modified
   },
-  { new: true, upsert: true }  // ⚠️ Allows UPDATE operations
+  { new: true, upsert: true } // ⚠️ Allows UPDATE operations
 );
 ```
 
 **Issue 2: No Hash Chain Protection**
+
 - Results stored as plain JSON
 - No SHA-256 hash chain like question papers
 - No integrity verification mechanism
 - No tamper detection
 
 **Issue 3: No Immutable Flag**
+
 - Result schema allows updates
 - MongoDB timestamps show updates but don't prevent them
 - No read-only flag after submission
@@ -348,14 +375,14 @@ const result = await Result.findOneAndUpdate(
 
 ### 4.3 Result Tampering Risk Scenarios
 
-| Scenario | Risk Level | Current Protection |
-|----------|-----------|-------------------|
-| **Direct DB modification** | HIGH | ❌ None (MongoDB writes allowed) |
-| **Malicious admin** | HIGH | ❌ No audit trail of modifications |
-| **Frontend/backend compromise** | HIGH | ❌ No immutability enforcement |
-| **Score inflation** | HIGH | ❌ Results can be updated |
-| **Answer modification** | HIGH | ❌ Answers can be changed |
-| **Timestamp manipulation** | MEDIUM | ⚠️ Partial (timestamps exist but mutable) |
+| Scenario                        | Risk Level | Current Protection                        |
+| ------------------------------- | ---------- | ----------------------------------------- |
+| **Direct DB modification**      | HIGH       | ❌ None (MongoDB writes allowed)          |
+| **Malicious admin**             | HIGH       | ❌ No audit trail of modifications        |
+| **Frontend/backend compromise** | HIGH       | ❌ No immutability enforcement            |
+| **Score inflation**             | HIGH       | ❌ Results can be updated                 |
+| **Answer modification**         | HIGH       | ❌ Answers can be changed                 |
+| **Timestamp manipulation**      | MEDIUM     | ⚠️ Partial (timestamps exist but mutable) |
 
 ---
 
@@ -366,6 +393,7 @@ const result = await Result.findOneAndUpdate(
 ### 5.1 Encryption
 
 ✅ **Questions encrypted with AES-256-CBC:**
+
 - Random IV per encryption
 - 256-bit key from environment
 - Decryption only during authorized exam access
@@ -383,6 +411,7 @@ const result = await Result.findOneAndUpdate(
 Note: `questions` field is included in select but not `chunks.cipherText` or `chunks.iv`
 
 ✅ **Question Content Hidden from Lists:**
+
 - Only metadata shown: title, description, duration
 - Actual question text not visible in exam list
 - Question count calculated but questions not shown
@@ -390,6 +419,7 @@ Note: `questions` field is included in select but not `chunks.cipherText` or `ch
 ### 5.3 Timed Access
 
 ✅ **Questions Only Decrypted During Exam:**
+
 - 5-layer time validation before decryption
 - Registration window enforced
 - Scheduled start/end time enforced
@@ -398,10 +428,12 @@ Note: `questions` field is included in select but not `chunks.cipherText` or `ch
 ### 5.4 No Premature Access
 
 ✅ **Before Exam Time:**
+
 - Questions not accessible
 - Returns 403 Forbidden with time remaining
 
 ✅ **After Exam Time:**
+
 - Questions not accessible
 - Returns 403 with "exam expired" message
 
@@ -418,11 +450,14 @@ Note: `questions` field is included in select but not `chunks.cipherText` or `ch
 ✅ **Duplicate Submission Prevention:**
 
 ```javascript
-const existingResult = await Result.findOne({ student: req.user.id, exam: examId });
+const existingResult = await Result.findOne({
+  student: req.user.id,
+  exam: examId,
+});
 if (existingResult) {
-  return res.status(400).json({ 
-    error: 'Exam already completed',
-    message: 'You have already submitted this exam'
+  return res.status(400).json({
+    error: "Exam already completed",
+    message: "You have already submitted this exam",
   });
 }
 ```
@@ -431,15 +466,17 @@ if (existingResult) {
 
 ```javascript
 const reg = await Registration.findOne({ student: req.user.id, exam: examId });
-if (!reg) return res.status(403).json({ error: 'Not registered' });
+if (!reg) return res.status(403).json({ error: "Not registered" });
 ```
 
 ✅ **Submission Time Validation:**
+
 - Exam time window checked before submission
 - Cannot submit after exam ends
 - Cannot submit before exam starts
 
 ✅ **Automatic Grading:**
+
 - Server-side calculation of scores
 - Server compares student answers to correct answers
 - Score calculated on backend, not frontend
@@ -447,12 +484,14 @@ if (!reg) return res.status(403).json({ error: 'Not registered' });
 ### 6.2 What IS NOT Protected ❌
 
 ❌ **No Immutability After Submission:**
+
 - Results can be updated after creation
 - `findOneAndUpdate` with `upsert: true` allows modifications
 - No hash chain verification
 - No integrity checksums
 
 ❌ **No Result Hash Chain:**
+
 ```javascript
 // Results lack blockchain-style protection like question papers
 // Should have:
@@ -463,11 +502,13 @@ if (!reg) return res.status(403).json({ error: 'Not registered' });
 ```
 
 ❌ **No Read-Only Flag After Submission:**
+
 - Results not marked as immutable
 - No `frozen: true` or similar flag
 - Can be modified if PUT/PATCH endpoints were created
 
 ❌ **No Audit Trail:**
+
 - `timestamps: true` tracks createdAt/updatedAt
 - But doesn't prevent updates
 - No change history preserved
@@ -488,21 +529,22 @@ router.use(authMiddleware());
 
 export function authMiddleware() {
   return (req, res, next) => {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Unauthorized' });
-    
+    const token = req.headers.authorization?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
+
     try {
       const payload = jwt.verify(token, process.env.JWT_SECRET);
       req.user = payload;
       next();
     } catch {
-      return res.status(401).json({ error: 'Invalid token' });
+      return res.status(401).json({ error: "Invalid token" });
     }
   };
 }
 ```
 
 ✅ **No Anonymous Access:**
+
 - All exam endpoints require `authMiddleware()`
 - No public exam access
 - No unauthenticated question viewing
@@ -510,14 +552,17 @@ export function authMiddleware() {
 ### 7.2 Authorization Enforcement
 
 ✅ **Student Cannot Access Teacher Routes:**
+
 - Role-based middleware blocks non-teachers
 - Returns 403 Forbidden
 
 ✅ **Teacher Cannot Access Admin Routes:**
+
 - Admin approval requires admin role
 - Teachers cannot approve their own exams
 
 ✅ **Cross-Student Protection:**
+
 - Students can only access their own registered exams
 - Cannot view other students' results
 - Cannot register for exams multiple times
@@ -528,16 +573,16 @@ export function authMiddleware() {
 
 ## 8. SUMMARY TABLE
 
-| Component | Status | Evidence | Completeness |
-|-----------|--------|----------|--------------|
-| **MFA Implementation** | ⚠️ Partial | Phone OTP on registration only | 50% |
-| **RBAC** | ✅ Full | Role-based route middleware | 100% |
-| **Encrypted Transmission** | ✅ Full | JWT + CORS credentials | 100% |
-| **Question Paper Immutability** | ✅ Full | SHA-256 hash chain | 100% |
-| **Result Immutability** | ❌ Missing | No hash chain or freeze flag | 0% |
-| **Question Paper Leak Prevention** | ✅ Full | Encryption + time gating | 100% |
-| **Result Tampering Prevention** | ⚠️ Partial | No post-submission protection | 50% |
-| **Unauthorized Access Prevention** | ✅ Full | Auth + RBAC middleware | 100% |
+| Component                          | Status     | Evidence                       | Completeness |
+| ---------------------------------- | ---------- | ------------------------------ | ------------ |
+| **MFA Implementation**             | ⚠️ Partial | Phone OTP on registration only | 50%          |
+| **RBAC**                           | ✅ Full    | Role-based route middleware    | 100%         |
+| **Encrypted Transmission**         | ✅ Full    | JWT + CORS credentials         | 100%         |
+| **Question Paper Immutability**    | ✅ Full    | SHA-256 hash chain             | 100%         |
+| **Result Immutability**            | ❌ Missing | No hash chain or freeze flag   | 0%           |
+| **Question Paper Leak Prevention** | ✅ Full    | Encryption + time gating       | 100%         |
+| **Result Tampering Prevention**    | ⚠️ Partial | No post-submission protection  | 50%          |
+| **Unauthorized Access Prevention** | ✅ Full    | Auth + RBAC middleware         | 100%         |
 
 ---
 
@@ -545,12 +590,14 @@ export function authMiddleware() {
 
 ### Gap 1: Multi-Factor Authentication on Login ❌ CRITICAL
 
-**Issue:** 
+**Issue:**
+
 - Only password required for login
 - No second factor verification
 - Admin accounts vulnerable to credential theft
 
 **Recommendation:**
+
 - Implement OTP verification on login
 - Require verification code sent via SMS/email
 - Implement TOTP for admin accounts
@@ -563,12 +610,14 @@ export function authMiddleware() {
 ### Gap 2: Result Immutability Not Implemented ❌ CRITICAL
 
 **Issue:**
+
 - Results can be modified after submission
 - No hash chain to detect tampering
 - No way to verify result integrity
 - Malicious database modification possible
 
 **Recommendation:**
+
 - Implement hash chain for results (like question papers)
 - Add result hash verification on retrieval
 - Mark results as read-only after submission
@@ -579,15 +628,17 @@ export function authMiddleware() {
 
 ```javascript
 // Add to Result model:
-const resultHash = sha256(JSON.stringify({
-  student,
-  exam,
-  score,
-  total,
-  percentage,
-  submittedAt,
-  answers
-}));
+const resultHash = sha256(
+  JSON.stringify({
+    student,
+    exam,
+    score,
+    total,
+    percentage,
+    submittedAt,
+    answers,
+  })
+);
 
 // Store: resultHash, previousResultHash (for chain)
 // Verify on retrieval
@@ -604,12 +655,14 @@ result.resultHash = hash;
 ### Gap 3: Result Update/Delete Endpoints Missing ✅ (Actually a Good Thing)
 
 **Current State:** ✅
+
 - No PUT/PATCH/DELETE endpoints for results in production
 - Only GET endpoints for viewing
 - Prevents accidental modification mechanisms
 - Immutability enforced by lack of endpoints
 
 **But Still Vulnerable To:**
+
 - Direct MongoDB modifications
 - Admin bypassing application layer
 - No application-level protection
@@ -618,16 +671,16 @@ result.resultHash = hash;
 
 ## 10. OBJECTIVE COMPLIANCE ASSESSMENT
 
-| Requirement | Met? | Evidence |
-|-------------|------|----------|
-| **MFA** | ⚠️ Partial | Phone OTP for registration only, not login |
-| **RBAC** | ✅ Yes | Role-based route protection implemented |
-| **Encrypted Transmission** | ✅ Yes | JWT + CORS with credentials |
-| **Question Paper Immutability** | ✅ Yes | SHA-256 hash chain on chunks |
-| **Result Immutability** | ❌ No | No hash chain or freeze mechanism |
-| **Paper Leak Prevention** | ✅ Yes | Encryption + time gating |
-| **Result Tampering Prevention** | ⚠️ Partial | Input validation but no post-submission protection |
-| **Unauthorized Access Prevention** | ✅ Yes | Full auth + RBAC implementation |
+| Requirement                        | Met?       | Evidence                                           |
+| ---------------------------------- | ---------- | -------------------------------------------------- |
+| **MFA**                            | ⚠️ Partial | Phone OTP for registration only, not login         |
+| **RBAC**                           | ✅ Yes     | Role-based route protection implemented            |
+| **Encrypted Transmission**         | ✅ Yes     | JWT + CORS with credentials                        |
+| **Question Paper Immutability**    | ✅ Yes     | SHA-256 hash chain on chunks                       |
+| **Result Immutability**            | ❌ No      | No hash chain or freeze mechanism                  |
+| **Paper Leak Prevention**          | ✅ Yes     | Encryption + time gating                           |
+| **Result Tampering Prevention**    | ⚠️ Partial | Input validation but no post-submission protection |
+| **Unauthorized Access Prevention** | ✅ Yes     | Full auth + RBAC implementation                    |
 
 ---
 
@@ -636,6 +689,7 @@ result.resultHash = hash;
 ### Overall Status: ⚠️ **PARTIALLY MET (70% Complete)**
 
 **Strengths:**
+
 - ✅ Strong RBAC implementation
 - ✅ Question papers well-protected
 - ✅ Unauthorized access prevention solid
@@ -644,6 +698,7 @@ result.resultHash = hash;
 - ✅ No public/anonymous access
 
 **Critical Weaknesses:**
+
 - ❌ No MFA on login (only registration)
 - ❌ No result immutability mechanism
 - ❌ Results can be modified after submission
@@ -653,11 +708,13 @@ result.resultHash = hash;
 **What Would Make This FULLY MET:**
 
 1. **Implement Login MFA** (HIGH PRIORITY)
+
    - OTP verification on login
    - TOTP for admin accounts
    - Mandatory for sensitive roles
 
 2. **Implement Result Immutability** (CRITICAL PRIORITY)
+
    - Add hash chain to results (like question papers)
    - Mark results as frozen after submission
    - Implement integrity verification
@@ -668,6 +725,7 @@ result.resultHash = hash;
    - Preserve modification history
 
 **Estimated Effort to Achieve 100% Compliance:**
+
 - MFA on login: 3-4 hours
 - Result hash chain: 5-6 hours
 - Audit trail: 4-5 hours

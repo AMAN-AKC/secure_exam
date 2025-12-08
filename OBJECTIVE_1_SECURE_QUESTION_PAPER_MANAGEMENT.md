@@ -1,6 +1,7 @@
 # OBJECTIVE 1: SECURE QUESTION PAPER MANAGEMENT
 
 ## Objective Statement
+
 **Securely manage question paper creation, encryption, and distribution**
 
 The proposed system ensures secure handling of examination materials by implementing end-to-end encryption during question paper creation and distribution. Question papers are generated through a controlled interface accessible only to authorized teachers and administrators. Once created, the papers are encrypted using advanced cryptographic algorithms and stored in an access-restricted environment. During distribution, secure protocols and time-based access mechanisms ensure that papers are delivered only at the scheduled time, preventing premature access and maintaining the confidentiality of exam content.
@@ -20,52 +21,59 @@ This objective is **completely implemented** with all required security componen
 **File:** `server/src/utils/crypto.js` (Lines 1-31)
 
 ```javascript
-import crypto from 'crypto';
+import crypto from "crypto";
 
 function getKey() {
   const key = process.env.ENCRYPTION_KEY;
   if (!key || key.length !== 32) {
-    throw new Error('ENCRYPTION_KEY must be 32 chars for AES-256-CBC');
+    throw new Error("ENCRYPTION_KEY must be 32 chars for AES-256-CBC");
   }
-  return Buffer.from(key, 'utf8');
+  return Buffer.from(key, "utf8");
 }
 
 export function aesEncrypt(plainText) {
   const key = getKey();
   const iv = crypto.randomBytes(16);
-  const cipher = crypto.createCipheriv('aes-256-cbc', key, iv);
-  const enc = Buffer.concat([cipher.update(Buffer.from(plainText, 'utf8')), cipher.final()]);
-  return { iv: iv.toString('base64'), cipherText: enc.toString('base64') };
+  const cipher = crypto.createCipheriv("aes-256-cbc", key, iv);
+  const enc = Buffer.concat([
+    cipher.update(Buffer.from(plainText, "utf8")),
+    cipher.final(),
+  ]);
+  return { iv: iv.toString("base64"), cipherText: enc.toString("base64") };
 }
 
 export function aesDecrypt(ivBase64, cipherBase64) {
   const key = getKey();
-  const iv = Buffer.from(ivBase64, 'base64');
-  const cipherBuf = Buffer.from(cipherBase64, 'base64');
-  const decipher = crypto.createDecipheriv('aes-256-cbc', key, iv);
+  const iv = Buffer.from(ivBase64, "base64");
+  const cipherBuf = Buffer.from(cipherBase64, "base64");
+  const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv);
   const dec = Buffer.concat([decipher.update(cipherBuf), decipher.final()]);
-  return dec.toString('utf8');
+  return dec.toString("utf8");
 }
 ```
 
 ### 1.2 Implementation Details
 
 ✅ **Algorithm:** AES-256-CBC (Advanced Encryption Standard, 256-bit key)
+
 - Industry-standard encryption algorithm
 - CBC mode ensures pattern independence
 - 256-bit key provides quantum-resistant security for current needs
 
 ✅ **Key Management:**
+
 - 32-character encryption key from environment variable: `ENCRYPTION_KEY`
 - Key validation ensures minimum security standard
 - Environment variable prevents hardcoding secrets
 
 ✅ **Initialization Vector (IV):**
+
 - Random 16-byte IV generated per encryption: `crypto.randomBytes(16)`
 - IV included in encryption output for decryption
 - Random IV prevents pattern recognition across multiple encryptions
 
 ✅ **Decryption Process:**
+
 - Stored IV recovered from database
 - Cipher text decrypted using same algorithm and key
 - UTF-8 encoding ensures data integrity
@@ -79,20 +87,28 @@ export function aesDecrypt(ivBase64, cipherBase64) {
 **File:** `server/src/routes/teacherRoutes.js` (Lines 1-14)
 
 ```javascript
-import { Router } from 'express';
-import { authMiddleware, requireRole } from '../middlewares/auth.js';
-import { createExam, addQuestion, finalizeExam, listMyExams, updateExamSettings, deleteExam, getExamResults } from '../controllers/teacherController.js';
+import { Router } from "express";
+import { authMiddleware, requireRole } from "../middlewares/auth.js";
+import {
+  createExam,
+  addQuestion,
+  finalizeExam,
+  listMyExams,
+  updateExamSettings,
+  deleteExam,
+  getExamResults,
+} from "../controllers/teacherController.js";
 
 const router = Router();
-router.use(authMiddleware(), requireRole('teacher'));
+router.use(authMiddleware(), requireRole("teacher"));
 
-router.post('/exams', createExam);
-router.post('/exams/:examId/questions', addQuestion);
-router.put('/exams/:examId/settings', updateExamSettings);
-router.post('/exams/:examId/finalize', finalizeExam);
-router.delete('/exams/:examId', deleteExam);
-router.get('/exams', listMyExams);
-router.get('/exams/:examId/results', getExamResults);
+router.post("/exams", createExam);
+router.post("/exams/:examId/questions", addQuestion);
+router.put("/exams/:examId/settings", updateExamSettings);
+router.post("/exams/:examId/finalize", finalizeExam);
+router.delete("/exams/:examId", deleteExam);
+router.get("/exams", listMyExams);
+router.get("/exams/:examId/results", getExamResults);
 
 export default router;
 ```
@@ -105,7 +121,7 @@ export default router;
 export function requireRole(...roles) {
   return (req, res, next) => {
     if (!req.user || !roles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Unauthorized' });
+      return res.status(403).json({ error: "Unauthorized" });
     }
     next();
   };
@@ -115,16 +131,19 @@ export function requireRole(...roles) {
 ### 2.3 Access Control Implementation
 
 ✅ **Authentication Requirement:**
+
 - All teacher routes require `authMiddleware()`
 - JWT token validation before any operation
 - Unauthenticated users receive 401 Unauthorized
 
 ✅ **Role-Based Authorization:**
+
 - `requireRole('teacher')` middleware enforces teacher-only access
 - Non-teacher users receive 403 Forbidden error
 - Admin routes have separate admin-only middleware
 
 ✅ **Protected Operations:**
+
 - ✅ Create exam: `POST /teacher/exams`
 - ✅ Add questions: `POST /teacher/exams/:examId/questions`
 - ✅ Update settings: `PUT /teacher/exams/:examId/settings`
@@ -132,6 +151,7 @@ export function requireRole(...roles) {
 - ✅ Delete exam: `DELETE /teacher/exams/:examId`
 
 ✅ **Teacher Ownership:**
+
 - Teachers can only modify their own exams: `createdBy: req.user.id`
 - Cannot access other teachers' question papers
 
@@ -165,30 +185,44 @@ export const finalizeExam = async (req, res) => {
   try {
     const { examId } = req.params;
     const exam = await Exam.findOne({ _id: examId, createdBy: req.user.id });
-    if (!exam) return res.status(404).json({ error: 'Exam not found' });
-    if (exam.questions.length === 0) return res.status(400).json({ error: 'No questions to finalize' });
+    if (!exam) return res.status(404).json({ error: "Exam not found" });
+    if (exam.questions.length === 0)
+      return res.status(400).json({ error: "No questions to finalize" });
 
     const parts = 5;
     const questionChunks = splitIntoChunks(exam.questions, parts);
 
     const chunks = [];
-    let prevHash = 'GENESIS';
+    let prevHash = "GENESIS";
 
     questionChunks.forEach((qChunk, index) => {
       const payload = JSON.stringify({ questions: qChunk, prevHash, index });
       const currHash = sha256(payload);
       const enc = aesEncrypt(payload);
-      chunks.push({ index, prevHash, hash: currHash, iv: enc.iv, cipherText: enc.cipherText });
+      chunks.push({
+        index,
+        prevHash,
+        hash: currHash,
+        iv: enc.iv,
+        cipherText: enc.cipherText,
+      });
       prevHash = currHash;
     });
 
     exam.chunks = chunks;
-    exam.status = 'pending'; // Send to admin for approval
+    exam.status = "pending"; // Send to admin for approval
     await exam.save();
 
-    res.json({ examId: exam._id, chunks: chunks.map(c => ({ index: c.index, hash: c.hash, prevHash: c.prevHash })) });
+    res.json({
+      examId: exam._id,
+      chunks: chunks.map((c) => ({
+        index: c.index,
+        hash: c.hash,
+        prevHash: c.prevHash,
+      })),
+    });
   } catch (e) {
-    res.status(500).json({ error: 'Failed to finalize exam' });
+    res.status(500).json({ error: "Failed to finalize exam" });
   }
 };
 ```
@@ -196,27 +230,32 @@ export const finalizeExam = async (req, res) => {
 ### 3.3 Storage Implementation
 
 ✅ **Question Paper Split:**
+
 - Questions divided into 5 chunks for distributed encryption
 - Prevents single point of failure
 - Enables granular access control
 
 ✅ **Individual Chunk Encryption:**
+
 - Each chunk encrypted separately with AES-256-CBC
 - Unique IV generated per chunk
 - Independent cipherText for each chunk
 
 ✅ **Hash Chain Integrity:**
+
 - SHA-256 hash of each chunk payload
 - prevHash field creates cryptographic chain
 - GENESIS hash initializes chain for first chunk
 
 ✅ **Secure Storage:**
+
 - `iv`: Initialization vector (base64 encoded)
 - `cipherText`: Encrypted question content (base64 encoded)
 - `hash`: SHA-256 hash for integrity verification
 - `prevHash`: Previous chunk's hash for chain validation
 
 ✅ **Status Management:**
+
 - `status: 'pending'` after finalization
 - Prevents distribution before admin approval
 - Admin must explicitly approve before students can access
@@ -231,7 +270,9 @@ export const finalizeExam = async (req, res) => {
 
 ```javascript
 export const listMyExams = async (req, res) => {
-  const exams = await Exam.find({ createdBy: req.user.id }).select('-chunks.cipherText -chunks.iv');
+  const exams = await Exam.find({ createdBy: req.user.id }).select(
+    "-chunks.cipherText -chunks.iv"
+  );
   res.json(exams);
 };
 ```
@@ -239,21 +280,25 @@ export const listMyExams = async (req, res) => {
 ### 4.2 Query-Level Security
 
 ✅ **Encrypted Content Hidden:**
+
 - `.select('-chunks.cipherText -chunks.iv')` excludes encrypted data
 - Only metadata visible in list view: exam title, settings, status
 - Question content never exposed in list operations
 
 ✅ **Teacher Ownership Verification:**
+
 - `createdBy: req.user.id` ensures only creator can view
 - Other teachers cannot see each other's exams
 - MongoDB query-level filtering
 
 ✅ **Selective Field Exposure:**
+
 - Visible: exam ID, title, description, status, timing, settings
 - Hidden: encrypted question chunks
 - Hidden: initialization vectors
 
 ✅ **Decryption Isolation:**
+
 - Encrypted data only decrypted in `accessExam()` function
 - Only decrypted after time-based validation passes
 - Never exposed in list or metadata views
@@ -287,20 +332,20 @@ export const accessExam = async (req, res) => {
     if (!reg) {
       return res.status(403).json({ error: 'Not registered for this exam' });
     }
-    
+
     const exam = await Exam.findById(examId);
     if (!exam) {
       return res.status(404).json({ error: 'Exam not found' });
     }
-    
+
     const now = dayjs.utc();
     const startTime = dayjs.utc(reg.startTime);
     const endTime = dayjs.utc(reg.endTime);
-    
+
     // TIME CHECK 1: Registration Period - Before Start
     if (exam.availableFrom && dayjs.utc(exam.availableFrom).isAfter(now)) {
       const minutesUntilStart = startTime.diff(now, 'minute');
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Exam not yet available',
         message: `Exam starts in ${minutesUntilStart} minutes`,
         minutesUntilStart,
@@ -308,19 +353,19 @@ export const accessExam = async (req, res) => {
         currentServerTime: now.toISOString()
       });
     }
-    
+
     // TIME CHECK 2: Registration Period - After End
     if (exam.availableTo && dayjs.utc(exam.availableTo).isBefore(now)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Exam time has expired',
         message: 'The allocated time for this exam has passed'
       });
     }
-    
+
     // TIME CHECK 3: Exam Not Yet Started
     if (now.isBefore(startTime)) {
       const minutesUntilStart = startTime.diff(now, 'minute');
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Exam not yet available',
         message: `Exam starts in ${minutesUntilStart} minutes`,
         minutesUntilStart,
@@ -328,22 +373,22 @@ export const accessExam = async (req, res) => {
         currentServerTime: now.toISOString()
       });
     }
-    
+
     // TIME CHECK 4: Exam Time Expired
     if (now.isAfter(endTime)) {
-      return res.status(403).json({ 
+      return res.status(403).json({
         error: 'Exam time has expired',
         message: 'The allocated time for this exam has passed'
       });
     }
-    
+
     // TIME CHECK 5: Late Entry Policy
     if (exam.examStartTime && !exam.allowLateEntry) {
       const examScheduledStart = dayjs.utc(exam.examStartTime);
       const lateThresholdMinutes = 15; // Allow 15 minutes late entry buffer
-      
+
       if (now.isAfter(examScheduledStart.add(lateThresholdMinutes, 'minute'))) {
-        return res.status(403).json({ 
+        return res.status(403).json({
           error: 'Late entry not permitted',
           message: `This exam started at ${examScheduledStart.format('HH:mm')} and late entry is not allowed`
         });
@@ -353,7 +398,7 @@ export const accessExam = async (req, res) => {
     // Check if student has already submitted
     const existingResult = await Result.findOne({ student: req.user.id, exam: examId });
     if (existingResult) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'Exam already completed',
         message: 'You have already submitted this exam'
       });
@@ -370,36 +415,43 @@ export const accessExam = async (req, res) => {
 ### 5.3 Time-Based Access Implementation
 
 ✅ **TIME CHECK 1: Pre-Registration Prevention**
+
 - Validates: `availableFrom` timestamp
 - Blocks: Access before registration period starts
 - Returns: Minutes until start + server time for verification
 
 ✅ **TIME CHECK 2: Registration Window Enforcement**
+
 - Validates: `availableTo` timestamp
 - Blocks: Access after registration period ends
 - Message: Clear deadline notification
 
 ✅ **TIME CHECK 3: Pre-Exam Start Prevention**
+
 - Validates: Student's personal `startTime` (from registration)
 - Blocks: Access before scheduled exam start
 - Returns: Minutes until exam begins
 
 ✅ **TIME CHECK 4: Post-Exam Expiration**
+
 - Validates: Student's personal `endTime` (from registration)
 - Blocks: Access after exam completion deadline
 - Message: Exam time expired notification
 
 ✅ **TIME CHECK 5: Late Entry Control**
+
 - Validates: `allowLateEntry` flag + 15-minute grace period
 - Blocks: Late entry when not permitted
 - Returns: Scheduled start time for reference
 
 ✅ **Decryption Gating:**
+
 - Questions encrypted with AES-256-CBC
 - Decryption only occurs AFTER all 5 time checks pass
 - `aesDecrypt(c.iv, c.cipherText)` is last operation before delivery
 
 ✅ **UTC Time Consistency:**
+
 - All checks use UTC: `dayjs.utc()`
 - Prevents timezone-based bypass attempts
 - Server time returned for client synchronization
@@ -501,6 +553,7 @@ export const accessExam = async (req, res) => {
 ### 6.2 Encryption & Decryption Cycle
 
 **Encryption (One-Time at Finalization):**
+
 ```
 Plain Text Questions
         ↓
@@ -518,6 +571,7 @@ No access to plain text in database
 ```
 
 **Decryption (Only During Authorized Exam Access):**
+
 ```
 Student Access Request
         ↓
@@ -550,40 +604,44 @@ Deliver to Student Frontend
 
 ```javascript
 const chunks = [];
-let prevHash = 'GENESIS';
+let prevHash = "GENESIS";
 
 questionChunks.forEach((qChunk, index) => {
   const payload = JSON.stringify({ questions: qChunk, prevHash, index });
-  const currHash = sha256(payload);                    // Hash includes prevHash
-  chunks.push({ 
-    index, 
-    prevHash,                                          // Previous chunk's hash
-    hash: currHash,                                    // Current chunk's hash
-    iv: enc.iv, 
-    cipherText: enc.cipherText 
+  const currHash = sha256(payload); // Hash includes prevHash
+  chunks.push({
+    index,
+    prevHash, // Previous chunk's hash
+    hash: currHash, // Current chunk's hash
+    iv: enc.iv,
+    cipherText: enc.cipherText,
   });
-  prevHash = currHash;                                 // Chain continues
+  prevHash = currHash; // Chain continues
 });
 ```
 
 ### 7.2 Tampering Detection Properties
 
 ✅ **Blockchain-Style Hash Chain:**
+
 - First chunk: `hash = SHA256({questions, prevHash: "GENESIS", index: 0})`
 - Second chunk: `hash = SHA256({questions, prevHash: <hash1>, index: 1})`
 - ... continues for all chunks
 
 ✅ **Tampering Detection:**
+
 - Any modification of encrypted cipherText invalidates the hash
 - Hash mismatch detected when chunk is decrypted
 - All subsequent hashes become invalid
 
 ✅ **Integrity Verification:**
+
 - Backend can recalculate hash chain without decrypting
 - Compare stored hash vs calculated hash
 - If mismatch found → chunk has been tampered with
 
 ✅ **Attack Prevention:**
+
 - Hacker cannot modify one chunk without breaking chain
 - Cannot modify hash because hash depends on payload
 - Cannot modify cipherText because it's part of verification
@@ -592,44 +650,49 @@ questionChunks.forEach((qChunk, index) => {
 
 ## 8. SECURITY FEATURES SUMMARY
 
-| Feature | Implementation | Security Level |
-|---------|-----------------|-----------------|
-| **Encryption Algorithm** | AES-256-CBC | Military-grade |
-| **Key Management** | 32-char ENCRYPTION_KEY from environment | Secure |
-| **Initialization Vector** | Random 16-byte per encryption | Cryptographically strong |
-| **Access Control** | Role-based + ownership verification | Strong |
-| **Data Isolation** | Query-level selection exclusion | Database-level |
-| **Timing Enforcement** | 5-layer validation checks | Strict |
-| **Hash Chain** | SHA-256 blockchain style | Tamper-proof |
-| **Decryption Gating** | Only after time validation | Layered security |
-| **Admin Approval** | Required before distribution | Governance |
-| **Late Entry** | 15-minute configurable grace period | Controlled access |
+| Feature                   | Implementation                          | Security Level           |
+| ------------------------- | --------------------------------------- | ------------------------ |
+| **Encryption Algorithm**  | AES-256-CBC                             | Military-grade           |
+| **Key Management**        | 32-char ENCRYPTION_KEY from environment | Secure                   |
+| **Initialization Vector** | Random 16-byte per encryption           | Cryptographically strong |
+| **Access Control**        | Role-based + ownership verification     | Strong                   |
+| **Data Isolation**        | Query-level selection exclusion         | Database-level           |
+| **Timing Enforcement**    | 5-layer validation checks               | Strict                   |
+| **Hash Chain**            | SHA-256 blockchain style                | Tamper-proof             |
+| **Decryption Gating**     | Only after time validation              | Layered security         |
+| **Admin Approval**        | Required before distribution            | Governance               |
+| **Late Entry**            | 15-minute configurable grace period     | Controlled access        |
 
 ---
 
 ## 9. COMPLIANCE & BEST PRACTICES
 
 ✅ **Encryption Standards:**
+
 - NIST approved: AES-256-CBC
 - FIPS 140-2 compliant algorithms
 - Industry standard implementation
 
 ✅ **Access Control:**
+
 - Principle of Least Privilege: teachers only access their exams
 - Role-based separation: teacher vs admin vs student
 - Ownership verification: createdBy validation
 
 ✅ **Key Management:**
+
 - Keys stored in environment (not in code)
 - 32-character minimum strength
 - Validated on application startup
 
 ✅ **Audit Trail:**
+
 - Status tracking: draft → pending → approved
 - Teacher ownership recorded: createdBy field
 - Timestamps: createdAt and updatedAt
 
 ✅ **Defense in Depth:**
+
 - Encryption layer (AES-256-CBC)
 - Access control layer (role-based)
 - Time validation layer (5 checks)
@@ -658,6 +721,7 @@ questionChunks.forEach((qChunk, index) => {
 ### Test Scenarios
 
 **Scenario 1: Unauthorized Access Attempt**
+
 ```
 1. Non-teacher user tries: POST /teacher/exams/create
 2. Expected: 403 Forbidden (requireRole fails)
@@ -665,6 +729,7 @@ questionChunks.forEach((qChunk, index) => {
 ```
 
 **Scenario 2: Pre-Registration Access**
+
 ```
 1. Exam availableFrom = tomorrow
 2. Student tries: GET /student/exams/:examId/access (today)
@@ -673,6 +738,7 @@ questionChunks.forEach((qChunk, index) => {
 ```
 
 **Scenario 3: Post-Exam Access**
+
 ```
 1. Exam endTime = 30 minutes ago
 2. Student tries: GET /student/exams/:examId/access
@@ -681,6 +747,7 @@ questionChunks.forEach((qChunk, index) => {
 ```
 
 **Scenario 4: Valid Exam Access**
+
 ```
 1. All time checks pass
 2. Student requests: GET /student/exams/:examId/access
@@ -696,6 +763,7 @@ questionChunks.forEach((qChunk, index) => {
 The **Secure Question Paper Management** objective is **FULLY IMPLEMENTED** and **OPERATIONAL**.
 
 All required components are in place:
+
 - ✅ End-to-end AES-256-CBC encryption
 - ✅ Controlled teacher-only creation interface
 - ✅ Admin approval gateway

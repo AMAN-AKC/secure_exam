@@ -237,7 +237,7 @@ export const verifyOTP = async (req, res) => {
  */
 export const requireIdentityVerification = async (req, res, next) => {
   try {
-    const { identityToken } = req.body;
+    const { identityToken } = req.body || {};
 
     if (!identityToken) {
       // Log unauthorized attempt

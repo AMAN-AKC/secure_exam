@@ -7,7 +7,7 @@ import { AccessLog } from '../models/AccessLog.js';
 export const logResourceAccess = (resource) => async (req, res, next) => {
   try {
     const resourceId = req.params.examId || req.params.resultId || req.params.id;
-    const resourceTitle = req.query.title || req.body.title || null;
+    const resourceTitle = req.query.title || (req.body && req.body.title) || null;
 
     if (resourceId && req.user) {
       // Determine action based on request method and context

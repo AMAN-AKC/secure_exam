@@ -19,8 +19,8 @@ router.use(authMiddleware());
 router.get('/:examId/preview', getQuestionPreview); // Get preview of all questions
 router.post('/:examId/preview/complete', completePreview); // Mark preview as complete
 
-// Finalization (requires identity verification)
-router.post('/:examId/finalize', requireIdentityVerification, finalizeExam); // Finalize exam
+// Finalization
+router.post('/:examId/finalize', finalizeExam); // Finalize exam
 
 // Marking system
 router.patch('/:examId/questions/:questionIndex/marking', updateQuestionMarking); // Update question points

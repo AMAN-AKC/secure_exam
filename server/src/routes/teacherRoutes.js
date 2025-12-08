@@ -12,11 +12,8 @@ router.post('/exams', createExam);
 router.post('/exams/:examId/questions', addQuestion);
 router.put('/exams/:examId/settings', updateExamSettings);
 
-// Sensitive operation: Finalize exam requires identity verification
-// Client must first call GET /auth/verify-identity/challenge to get challenge
-// Then call POST /auth/verify-identity/password or /auth/verify-identity/otp
-// Then include the identityToken in body of this request
-router.post('/exams/:examId/finalize', requireIdentityVerification, finalizeExam);
+// Finalize exam - marks exam as ready for student access
+router.post('/exams/:examId/finalize', finalizeExam);
 
 router.delete('/exams/:examId', deleteExam);
 router.get('/exams', logResourceAccess('exam'), listMyExams);

@@ -987,6 +987,7 @@ export default function StudentDashboard(){
                               };
                               return `⏳ Results will be available on ${result.hideReason ? formatTime(result.hideReason) : 'N/A'}`;
                             })()}
+                          </div>
                         </div>
                         <div style={{
                           textAlign: 'center',

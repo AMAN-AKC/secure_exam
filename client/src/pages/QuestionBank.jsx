@@ -4,7 +4,7 @@ import { Search, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
 import { PageTransition, SlideUp } from './Animations';
 import '../styles/QuestionBank.css';
 
-export const QuestionBank = () => {
+const QuestionBank = () => {
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');

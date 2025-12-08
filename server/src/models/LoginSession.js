@@ -99,7 +99,6 @@ const loginSessionSchema = new mongoose.Schema({
 loginSessionSchema.index({ userId: 1, isActive: 1, createdAt: -1 });
 loginSessionSchema.index({ userId: 1, expiresAt: 1 });
 loginSessionSchema.index({ ipAddress: 1, createdAt: -1 });
-loginSessionSchema.index({ lastActivityAt: 1 });
 
 // Query helpers
 loginSessionSchema.query.active = function () {

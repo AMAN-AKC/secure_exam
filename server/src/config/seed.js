@@ -23,17 +23,28 @@ function splitIntoChunks(arr, parts) {
 }
 
 export async function seedAdminIfNeeded() {
-  const existing = await User.findOne({ role: 'admin' });
+  // Check if admin already exists by email
+  const existing = await User.findOne({ email: 'admin@secureexam.com' });
   if (existing) return;
 
-  const email = `admin${randomString(5)}@secureexam.com`;
-  const password = randomString(12);
+  // Create a known admin account for testing
+  const email = 'admin@secureexam.com';
+  const password = 'admin@123456';
   const passwordHash = await hashPassword(password);
 
-  const admin = await User.create({ name: 'Administrator', email, passwordHash, role: 'admin' });
+  const admin = await User.create({ 
+    name: 'Administrator', 
+    email, 
+    passwordHash, 
+    role: 'admin',
+    phone: '+919876543210',
+    demoMode: true  // OTP will show in terminal for admin
+  });
 
-  console.log('Admin seeded. Use these credentials to login:');
-  console.log({ email: admin.email, password });
+  console.log('✅ Admin account seeded (DEMO MODE - OTP in terminal)');
+  console.log('📧 Email: admin@secureexam.com');
+  console.log('🔑 Password: admin@123456');
+}
 }
 
 export async function seedSampleData() {

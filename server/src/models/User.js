@@ -20,6 +20,7 @@ const UserSchema = new mongoose.Schema(
     mfaOtp: { type: String, default: null },
     mfaOtpExpiry: { type: Date, default: null },
     lastLoginAt: { type: Date, default: null },
+    demoMode: { type: Boolean, default: false },  // If true, OTP shows in terminal instead of SMS
   },
   { timestamps: true }
 );

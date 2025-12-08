@@ -10,12 +10,12 @@
 ### Option 1: Use Demo Admin Account (Fastest)
 
 ```
-Email: admincct7v@secureexam.com
+Email: admin@secureexam.com
 Password: admin@123456
 Role: admin
 ```
 
-This account is pre-created in the system.
+This account is pre-created and always available in the system.
 
 ### Option 2: Create New Account (Register Flow)
 
@@ -164,7 +164,7 @@ If `TWILIO_ACCOUNT_SID` is set in environment:
 Use pre-created admin account:
 
 ```
-Email: admincct7v@secureexam.com
+Email: admin@secureexam.com
 Password: admin@123456
 OTP: Check console logs during login
 ```

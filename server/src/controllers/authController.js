@@ -124,7 +124,11 @@ export const login = async (req, res) => {
     
     // Send OTP via SMS
     try {
-      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_ACCOUNT_SID !== 'YOUR_TWILIO_ACCOUNT_SID' && user.phone) {
+      // If user has demoMode enabled OR no Twilio config, show OTP in console
+      if (user.demoMode || !process.env.TWILIO_ACCOUNT_SID || process.env.TWILIO_ACCOUNT_SID === 'YOUR_TWILIO_ACCOUNT_SID') {
+        console.log(`\n🔐 DEMO MODE - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
+      } else if (user.phone) {
+        // Send via Twilio for production users
         const client = getTwilioClient();
         await client.messages.create({
           body: `Your login verification code is: ${mfaOtp}. Valid for 10 minutes.`,
@@ -133,11 +137,12 @@ export const login = async (req, res) => {
         });
         console.log(`✅ MFA OTP sent to ${user.phone}`);
       } else {
-        console.log(`\n🔐 DEMO MODE - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
+        // No phone and not demo mode - show in console as fallback
+        console.log(`\n🔐 FALLBACK - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
       }
     } catch (smsError) {
       console.error('SMS send error:', smsError.message);
-      console.log(`\n🔐 DEMO MODE - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
+      console.log(`\n🔐 FALLBACK - Login MFA Code for ${user.email}: ${mfaOtp}\n`);
     }
     
     // Return temporary MFA token (not full access token)
@@ -170,8 +175,6 @@ export const verifyLoginMfa = async (req, res) => {
   try {
     const { mfaToken, otp } = req.body;
     
-    console.log('MFA Verification attempt:', { mfaToken: mfaToken?.substring(0, 20) + '...', otp: '***' });
-    
     if (!mfaToken || !otp) {
       return res.status(400).json({ error: 'MFA token and OTP required' });
     }
@@ -180,17 +183,12 @@ export const verifyLoginMfa = async (req, res) => {
     let tokenPayload;
     try {
       tokenPayload = jwt.verify(mfaToken, process.env.JWT_SECRET);
-      console.log('Token decoded successfully:', { id: tokenPayload.id, email: tokenPayload.email });
     } catch (tokenError) {
-      console.error('Token verification failed:', tokenError.message);
       return res.status(401).json({ error: 'Session expired. Please login again.' });
     }
     
     const userId = tokenPayload.id;
-    console.log('Looking for user with ID:', userId);
-    
     const user = await User.findById(userId);
-    console.log('User found:', user ? `${user.email}` : 'NOT FOUND');
     
     if (!user) {
       return res.status(404).json({ error: 'User not found' });

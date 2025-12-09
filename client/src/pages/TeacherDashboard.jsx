@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import { 
-  LayoutDashboard, 
-  FileText, 
-  BarChart2, 
-  LogOut, 
+import {
+  LayoutDashboard,
+  FileText,
+  BarChart2,
+  LogOut,
   Plus,
   TrendingUp,
   BookOpen,
@@ -47,7 +47,7 @@ export default function TeacherDashboard() {
   const [title, setTitle] = useState('');
   const [exam, setExam] = useState(null);
   const [text, setText] = useState('');
-  const [options, setOptions] = useState(['','','','']);
+  const [options, setOptions] = useState(['', '', '', '']);
   const [correctIndex, setCorrectIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
@@ -76,24 +76,24 @@ export default function TeacherDashboard() {
         setLoading(true);
         const examsRes = await api.get('/teacher/exams');
         const examsData = examsRes.data || [];
-        
+
         // Fetch results for all exams in parallel
         const resultPromises = examsData.map(exam =>
           api.get(`/teacher/exams/${exam._id}/results`)
             .then(res => res.data)
             .catch(() => [])
         );
-        
+
         const resultsArrays = await Promise.all(resultPromises);
         const allResults = resultsArrays.flat().filter(r => r);
-        
+
         // Create a map of exam IDs to their result counts for formatted exams
         const resultCountByExamId = {};
         allResults.forEach(result => {
           const examId = result.exam?._id || result.exam || result.examId;
           resultCountByExamId[examId] = (resultCountByExamId[examId] || 0) + 1;
         });
-        
+
         // Format exams for display
         const formattedExams = examsData.map(exam => ({
           id: exam._id,
@@ -104,7 +104,7 @@ export default function TeacherDashboard() {
           duration: `${exam.durationMinutes || 60} mins`,
           status: getExamStatus(exam.examStartTime, exam.examEndTime)
         }));
-        
+
         // Show only first 3 or all based on showAllExams flag
         setExams(formattedExams.slice(0, showAllExams ? formattedExams.length : 3));
 
@@ -132,7 +132,7 @@ export default function TeacherDashboard() {
 
         // Count active exams
         const activeExams = examsData.filter(exam => getExamStatus(exam.examStartTime, exam.examEndTime) === 'active').length;
-        
+
         // Count exams with submissions
         const examsWithSubmissions = Object.keys(resultCountByExamId).length;
 
@@ -168,12 +168,12 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const editExamData = sessionStorage.getItem('editExam');
     const shouldShowQuestionModal = sessionStorage.getItem('showQuestionModal');
-    
+
     if (editExamData && shouldShowQuestionModal) {
       try {
         const examToEdit = JSON.parse(editExamData);
         setExam(examToEdit);
-        
+
         // Populate exam settings from the draft exam
         setExamSettings({
           title: examToEdit.title || '',
@@ -190,9 +190,9 @@ export default function TeacherDashboard() {
           resultsReleaseDate: examToEdit.resultsReleaseDate ? new Date(examToEdit.resultsReleaseDate).toISOString().slice(0, 16) : '',
           resultsReleaseMessage: examToEdit.resultsReleaseMessage || ''
         });
-        
+
         setShowQuestionModal(true);
-        
+
         // Clean up sessionStorage
         sessionStorage.removeItem('editExam');
         sessionStorage.removeItem('showQuestionModal');
@@ -210,7 +210,7 @@ export default function TeacherDashboard() {
 
     // If we have start time and duration, calculate end time
     if (newSettings.examStartTime && newSettings.durationMinutes &&
-        (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
+      (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = startTime.add(newSettings.durationMinutes, 'minute');
       newSettings.examEndTime = endTime.format('YYYY-MM-DDTHH:mm');
@@ -218,7 +218,7 @@ export default function TeacherDashboard() {
 
     // If we have end time and duration, calculate start time
     else if (newSettings.examEndTime && newSettings.durationMinutes &&
-             (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
+      (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
       const endTime = dayjs(newSettings.examEndTime);
       const startTime = endTime.subtract(newSettings.durationMinutes, 'minute');
       newSettings.examStartTime = startTime.format('YYYY-MM-DDTHH:mm');
@@ -226,7 +226,7 @@ export default function TeacherDashboard() {
 
     // If we have start time and end time, calculate duration
     else if (newSettings.examStartTime && newSettings.examEndTime &&
-             (updates.examStartTime || updates.examEndTime)) {
+      (updates.examStartTime || updates.examEndTime)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = dayjs(newSettings.examEndTime);
       const durationMinutes = endTime.diff(startTime, 'minute');
@@ -276,7 +276,7 @@ export default function TeacherDashboard() {
       });
       setExam(data);
       setText('');
-      setOptions(['','','','']);
+      setOptions(['', '', '', '']);
       setCorrectIndex(0);
       alert('Question added successfully!');
     } catch (error) {
@@ -350,7 +350,7 @@ export default function TeacherDashboard() {
 
       // Find which day of the current week this result belongs to
       const dayDiff = Math.floor((resultDate - weekStart) / 86400000);
-      
+
       if (dayDiff >= 0 && dayDiff < 5) {
         if (result.score !== undefined && result.score !== null) {
           scores[dayDiff].score += result.score;
@@ -379,17 +379,10 @@ export default function TeacherDashboard() {
       <aside className="dashboard-sidebar">
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <div style={{
-              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-              padding: '0.75rem',
-              borderRadius: '0.75rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }}>
+            <div className="logo-icon-wrapper">
               <BookOpen size={24} color="white" />
             </div>
-            <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1a103c' }}>SecureExam</span>
+            <span className="logo-text">SecureExam</span>
           </div>
           {user && (
             <div style={{
@@ -445,148 +438,133 @@ export default function TeacherDashboard() {
             </div>
           ) : (
             <>
-            {/* Stats Grid */}
-            <div className="stats-grid">
-            {stats.map((stat, idx) => {
-              const Icon = stat.icon;
-              return (
-                <div key={idx} className="stat-card" style={{ borderLeftColor: stat.color }}>
-                  <div className="stat-icon" style={{ color: stat.color }}>
-                    <Icon size={24} />
-                  </div>
-                  <div className="stat-info">
-                    <p className="stat-label">{stat.label}</p>
-                    <p className="stat-value">{stat.value}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Main Grid */}
-          <div className="content-grid">
-            {/* Left Column */}
-            <div className="grid-left">
-              {/* Upcoming Exams */}
-              <div className="card">
-                <div className="card-header">
-                  <h2>Upcoming Exams</h2>
-                  <button 
-                    onClick={() => setShowAllExams(!showAllExams)}
-                    style={{ color: '#7c3aed', fontSize: '0.875rem', fontWeight: '600', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
-                    {showAllExams ? '← Show Less' : 'View All →'}
-                  </button>
-                </div>
-
-                <div className="exams-list">
-                  {exams.map((exam) => (
-                    <div key={exam.id} className="exam-card">
-                      <div className="exam-content">
-                        <h3>{exam.title}</h3>
-                        <p className="exam-class">{exam.class} • {exam.students} Students</p>
-                        <div className="exam-meta">
-                          <span className="exam-time">📅 {exam.date}</span>
-                          <span className="exam-duration">⏱️ {exam.duration}</span>
-                        </div>
+              {/* Stats Grid */}
+              <div className="stats-grid">
+                {stats.map((stat, idx) => {
+                  const Icon = stat.icon;
+                  return (
+                    <div key={idx} className="stat-card" style={{ borderLeftColor: stat.color }}>
+                      <div className="stat-icon" style={{ color: stat.color }}>
+                        <Icon size={24} />
                       </div>
-                      <span className={`status-badge status-${exam.status}`}>{exam.status}</span>
+                      <div className="stat-info">
+                        <p className="stat-label">{stat.label}</p>
+                        <p className="stat-value">{stat.value}</p>
+                      </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })}
               </div>
 
-              {/* Create Exam CTA */}
-              <div className="cta-card" style={{
-                background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
-                color: 'white',
-                padding: '2rem',
-                borderRadius: '1.5rem',
-                textAlign: 'center'
-              }}>
-                <div style={{ marginBottom: '1rem' }}>
-                  <Plus size={40} style={{ margin: '0 auto', marginBottom: '1rem' }} />
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>Create New Exam</h3>
-                  <p style={{ opacity: 0.9 }}>Build and launch your next assessment in minutes</p>
+              {/* Main Grid */}
+              <div className="content-grid">
+                {/* Left Column */}
+                <div className="grid-left">
+                  {/* Upcoming Exams */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h2>Upcoming Exams</h2>
+                      <button
+                        onClick={() => setShowAllExams(!showAllExams)}
+                        style={{ color: '#7c3aed', fontSize: '0.875rem', fontWeight: '600', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                        {showAllExams ? '← Show Less' : 'View All →'}
+                      </button>
+                    </div>
+
+                    <div className="exams-list">
+                      {exams.map((exam) => (
+                        <div key={exam.id} className="exam-card">
+                          <div className="exam-content">
+                            <h3>{exam.title}</h3>
+                            <p className="exam-class">{exam.class} • {exam.students} Students</p>
+                            <div className="exam-meta">
+                              <span className="exam-time">📅 {exam.date}</span>
+                              <span className="exam-duration">⏱️ {exam.duration}</span>
+                            </div>
+                          </div>
+                          <span className={`status-badge status-${exam.status}`}>{exam.status}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Create Exam CTA */}
+                  <div className="cta-card">
+                    <div className="cta-content">
+                      <Plus size={40} className="cta-icon" />
+                      <h3>Create New Exam</h3>
+                      <p>Build and launch your next assessment in minutes</p>
+                    </div>
+                    <button className="cta-button" onClick={() => setShowQuestionModal(true)}>
+                      Get Started
+                    </button>
+                  </div>
                 </div>
-                <button style={{
-                  background: 'rgba(255, 255, 255, 0.2)',
-                  border: '1px solid rgba(255, 255, 255, 0.3)',
-                  color: 'white',
-                  padding: '0.75rem 1.5rem',
-                  borderRadius: '0.75rem',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }} onClick={() => setShowQuestionModal(true)}>
-                  Get Started
-                </button>
+
+                {/* Right Column */}
+                <div className="grid-right">
+                  {/* Analytics Card */}
+                  <div className="card analytics-card">
+                    <div className="card-header">
+                      <h2>Performance Analytics</h2>
+                    </div>
+
+                    <div className="analytics-content">
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={chartData}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                          <XAxis dataKey="name" stroke="#9ca3af" />
+                          <YAxis stroke="#9ca3af" />
+                          <Tooltip
+                            contentStyle={{
+                              background: '#fff',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '0.5rem'
+                            }}
+                          />
+                          <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="analytics-stats">
+                      <div className="analytics-stat">
+                        <p>Avg Score</p>
+                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[2].value}</p>
+                      </div>
+                      <div className="analytics-stat">
+                        <p>Pass Rate</p>
+                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#2563eb' }}>{stats[3].value}</p>
+                      </div>
+                      <div className="analytics-stat">
+                        <p>Total Exams</p>
+                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[0].value}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Summary Card */}
+                  <div className="card">
+                    <div className="card-header">
+                      <h2>Quick Summary</h2>
+                    </div>
+                    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>Active Exams</span>
+                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.activeExams}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>Total Students</span>
+                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2563eb' }}>{summary.totalStudents}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                        <span style={{ fontWeight: '600', color: '#374151' }}>Pending Reviews</span>
+                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.pendingReviews}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
-            </div>
-
-            {/* Right Column */}
-            <div className="grid-right">
-              {/* Analytics Card */}
-              <div className="card analytics-card">
-                <div className="card-header">
-                  <h2>Performance Analytics</h2>
-                </div>
-
-                <div className="analytics-content">
-                  <ResponsiveContainer width="100%" height={250}>
-                    <BarChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="name" stroke="#9ca3af" />
-                      <YAxis stroke="#9ca3af" />
-                      <Tooltip 
-                        contentStyle={{
-                          background: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '0.5rem'
-                        }}
-                      />
-                      <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-
-                <div className="analytics-stats">
-                  <div className="analytics-stat">
-                    <p>Avg Score</p>
-                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[2].value}</p>
-                  </div>
-                  <div className="analytics-stat">
-                    <p>Pass Rate</p>
-                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#2563eb' }}>{stats[3].value}</p>
-                  </div>
-                  <div className="analytics-stat">
-                    <p>Total Exams</p>
-                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[0].value}</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Summary Card */}
-              <div className="card">
-                <div className="card-header">
-                  <h2>Quick Summary</h2>
-                </div>
-                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                    <span style={{ fontWeight: '600', color: '#374151' }}>Active Exams</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.activeExams}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                    <span style={{ fontWeight: '600', color: '#374151' }}>Total Students</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2563eb' }}>{summary.totalStudents}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                    <span style={{ fontWeight: '600', color: '#374151' }}>Pending Reviews</span>
-                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.pendingReviews}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
             </>
           )}
         </div>
@@ -742,7 +720,7 @@ export default function TeacherDashboard() {
                     onClick={() => {
                       setExam(null);
                       setText('');
-                      setOptions(['','','','']);
+                      setOptions(['', '', '', '']);
                       setCorrectIndex(0);
                     }}
                     style={{
@@ -1066,7 +1044,7 @@ export default function TeacherDashboard() {
                   onClick={async () => {
                     try {
                       setSubmitting(true);
-                      
+
                       // Convert local datetime-local values to UTC ISO strings
                       const settingsToSend = { ...examSettings };
                       if (settingsToSend.availableFrom) {
@@ -1084,7 +1062,7 @@ export default function TeacherDashboard() {
                       if (settingsToSend.resultsReleaseDate) {
                         settingsToSend.resultsReleaseDate = new Date(settingsToSend.resultsReleaseDate).toISOString();
                       }
-                      
+
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
                       setExam(data);
                       setShowSettingsModal(false);

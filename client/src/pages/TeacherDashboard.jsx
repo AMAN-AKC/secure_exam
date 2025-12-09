@@ -111,23 +111,34 @@ export default function TeacherDashboard() {
         // Calculate stats from results - ALL DYNAMIC DATA
         const totalExams = examsData.length;
         const uniqueStudents = new Set();
-        let totalScores = 0;
+        let totalPercentage = 0;
         let scoredResults = 0;
-        let passedResults = 0; // Count results with score >= 60 (passing threshold)
+        let passedResults = 0; // Count results with scpercentageore >= 60 (passing threshold)
         const PASS_THRESHOLD = 60;
 
         allResults.forEach(result => {
           uniqueStudents.add(result.studentId?._id || result.student?._id || result.student);
+
+          let percentage = 0;
+          // Calculate percentage based on result data availability
+          if (result.percentage !== undefined) {
+            percentage = result.percentage;
+          } else if (result.score !== undefined && result.total) {
+            percentage = (result.score / result.total) * 100;
+          } else if (result.score !== undefined) {
+            percentage = result.score; // Fallback to raw score if total missing (should be rare)
+          }
+
           if (result.score !== undefined && result.score !== null) {
-            totalScores += result.score;
+            totalPercentage += percentage;
             scoredResults++;
-            if (result.score >= PASS_THRESHOLD) {
+            if (percentage >= PASS_THRESHOLD) {
               passedResults++;
             }
           }
         });
 
-        const avgScore = scoredResults > 0 ? Math.round(totalScores / scoredResults) : 0;
+        const avgScore = scoredResults > 0 ? Math.round(totalPercentage / scoredResults) : 0;
         const passRate = scoredResults > 0 ? Math.round((passedResults / scoredResults) * 100) : 0;
 
         // Count active exams
@@ -353,7 +364,12 @@ export default function TeacherDashboard() {
 
       if (dayDiff >= 0 && dayDiff < 5) {
         if (result.score !== undefined && result.score !== null) {
-          scores[dayDiff].score += result.score;
+          let percentage = 0;
+          if (result.percentage !== undefined) percentage = result.percentage;
+          else if (result.total) percentage = (result.score / result.total) * 100;
+          else percentage = result.score;
+
+          scores[dayDiff].score += percentage;
           scores[dayDiff].count += 1;
         }
       }

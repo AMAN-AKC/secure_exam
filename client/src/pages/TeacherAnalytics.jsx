@@ -80,7 +80,7 @@ export default function TeacherAnalytics() {
   const fetchAnalyticsData = async () => {
     try {
       setLoading(true);
-      
+
       // Parallel fetching
       const examsRes = await api.get('/teacher/exams');
       setExams(examsRes.data);
@@ -91,7 +91,7 @@ export default function TeacherAnalytics() {
           .then(res => res.data || [])
           .catch(() => [])
       );
-      
+
       const resultsArrays = await Promise.all(resultPromises);
       const allResults = resultsArrays.flat().filter(r => r);
 
@@ -125,23 +125,30 @@ export default function TeacherAnalytics() {
       });
     }
 
+    // Helper to get percentage
+    const getPercentage = (r) => {
+      if (r.percentage !== undefined) return r.percentage;
+      if (r.score !== undefined && r.total) return (r.score / r.total) * 100;
+      return r.score || 0; // Fallback
+    };
+
     // Calculate statistics - ALL DYNAMIC DATA
     const uniqueStudents = new Set(filteredResults.map(r => r.studentId?._id || r.studentId || r.student?._id || r.student)).size;
-    
+
     // Get score data - handle both percentage and score fields
-    const scoreData = filteredResults.map(r => r.percentage !== undefined ? r.percentage : (r.score || 0));
+    const scoreData = filteredResults.map(r => getPercentage(r));
     const totalScore = scoreData.reduce((sum, score) => sum + score, 0);
     const avgScore = filteredResults.length > 0 ? Math.round((totalScore / filteredResults.length) * 100) / 100 : 0;
-    
+
     const PASS_THRESHOLD = 60;
     const passCount = filteredResults.filter(r => {
-      const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
+      const score = getPercentage(r);
       return score >= PASS_THRESHOLD;
     }).length;
     const failCount = filteredResults.length - passCount;
     const passRate = filteredResults.length > 0 ? Math.round((passCount / filteredResults.length) * 100) : 0;
     const failRate = filteredResults.length > 0 ? Math.round((failCount / filteredResults.length) * 100) : 0;
-    
+
     // Calculate completion rate (submissions / total possible)
     const totalPossibleSubmissions = examsData.length * (uniqueStudents || 1);
     const completionRate = totalPossibleSubmissions > 0 ? Math.round((filteredResults.length / totalPossibleSubmissions) * 100) : 0;
@@ -158,7 +165,7 @@ export default function TeacherAnalytics() {
     // Score distribution - DYNAMIC CALCULATION
     const scoreRanges = { '90-100': 0, '80-89': 0, '70-79': 0, '60-69': 0, '0-59': 0 };
     filteredResults.forEach(r => {
-      const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
+      const score = getPercentage(r);
       if (score >= 90) scoreRanges['90-100']++;
       else if (score >= 80) scoreRanges['80-89']++;
       else if (score >= 70) scoreRanges['70-79']++;
@@ -185,7 +192,7 @@ export default function TeacherAnalytics() {
     filteredResults.forEach(r => {
       const dayName = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][dayjs(r.submittedAt).day()];
       if (weeklyData[dayName]) {
-        const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
+        const score = getPercentage(r);
         weeklyData[dayName].total += score;
         weeklyData[dayName].count++;
       }
@@ -200,7 +207,7 @@ export default function TeacherAnalytics() {
     // Recent performance (last 10) - DYNAMIC CALCULATION
     const recentPerf = filteredResults.slice(-10).map(r => ({
       name: dayjs(r.submittedAt).format('MMM DD'),
-      score: r.percentage !== undefined ? r.percentage : (r.score || 0),
+      score: getPercentage(r),
     }));
     setPerformanceTrendData(recentPerf);
 
@@ -209,11 +216,11 @@ export default function TeacherAnalytics() {
     filteredResults.forEach(r => {
       const examId = r.exam?._id || r.examId || r.exam;
       const examTitle = r.exam?.title || (examsData.find(e => e._id === examId))?.title || 'Unknown';
-      
+
       if (!examStats[examId]) {
         examStats[examId] = { examId, title: examTitle, scores: [], students: 0 };
       }
-      const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
+      const score = getPercentage(r);
       examStats[examId].scores.push(score);
       examStats[examId].students++;
     });
@@ -239,7 +246,7 @@ export default function TeacherAnalytics() {
           examsAttempted: 0,
         };
       }
-      const score = r.percentage !== undefined ? r.percentage : (r.score || 0);
+      const score = getPercentage(r);
       studentStats[studentId].scores.push(score);
       studentStats[studentId].examsAttempted++;
     });
@@ -401,8 +408,8 @@ export default function TeacherAnalytics() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
             <h1 style={{ fontSize: '2rem', fontWeight: 700, color: '#1f2937', margin: 0 }}>Analytics</h1>
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <select 
-                value={dateRange} 
+              <select
+                value={dateRange}
                 onChange={(e) => setDateRange(e.target.value)}
                 style={{
                   padding: '0.5rem 1rem',
@@ -419,8 +426,8 @@ export default function TeacherAnalytics() {
                 <option value="90days">Last 90 Days</option>
               </select>
 
-              <select 
-                value={selectedExam} 
+              <select
+                value={selectedExam}
                 onChange={(e) => setSelectedExam(e.target.value)}
                 style={{
                   padding: '0.5rem 1rem',

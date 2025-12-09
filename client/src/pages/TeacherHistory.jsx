@@ -10,6 +10,7 @@ import {
   Clock,
   Search,
   Filter,
+  BookOpen,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../api';
@@ -21,7 +22,7 @@ export default function TeacherHistory() {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState([]);
-  
+
   // Filter states
   const [searchQuery, setSearchQuery] = useState('');
   const [actionTypeFilter, setActionTypeFilter] = useState('all');
@@ -33,6 +34,7 @@ export default function TeacherHistory() {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'exams', label: 'Exams', icon: FileText },
+    { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'history', label: 'History', icon: Clock },
   ];
@@ -247,6 +249,7 @@ export default function TeacherHistory() {
   const handleNavigation = (item) => {
     if (item.id === 'dashboard') navigate('/teacher');
     else if (item.id === 'exams') navigate('/teacher/exams');
+    else if (item.id === 'question-bank') navigate('/teacher/question-bank');
     else if (item.id === 'analytics') navigate('/teacher/analytics');
     else if (item.id === 'history') navigate('/teacher/history');
   };

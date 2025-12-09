@@ -1,10 +1,28 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Plus, Trash2, CheckCircle, Clock } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Trash2,
+  CheckCircle,
+  Clock,
+  LayoutDashboard,
+  FileText,
+  BarChart2,
+  LogOut,
+  BookOpen
+} from 'lucide-react';
+import { useAuth } from '../context/AuthContext.jsx';
 import { PageTransition, SlideUp } from '../components/Animations';
 import '../styles/QuestionBank.css';
+import './TeacherDashboard.css';
 
 const QuestionBank = () => {
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
+  const [activeNav, setActiveNav] = useState('question-bank');
+
   const [questions, setQuestions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
@@ -14,6 +32,14 @@ const QuestionBank = () => {
 
   const categories = ['math', 'science', 'english', 'history', 'geography', 'reasoning', 'technology', 'general'];
   const difficulties = ['easy', 'medium', 'hard'];
+
+  const navigationItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'exams', label: 'Exams', icon: FileText },
+    { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
+    { id: 'analytics', label: 'Analytics', icon: BarChart2 },
+    { id: 'history', label: 'History', icon: Clock },
+  ];
 
   useEffect(() => {
     fetchQuestions();
@@ -39,68 +65,150 @@ const QuestionBank = () => {
     }
   };
 
+  const handleNavigation = (item) => {
+    setActiveNav(item.id);
+    if (item.id === 'dashboard') navigate('/teacher');
+    else if (item.id === 'exams') navigate('/teacher/exams');
+    else if (item.id === 'question-bank') navigate('/teacher/question-bank');
+    else if (item.id === 'analytics') navigate('/teacher/analytics');
+    else if (item.id === 'history') navigate('/teacher/history');
+  };
+
   return (
-    <PageTransition>
-      <div className="question-bank-container">
-        <div className="qb-header">
-          <h1>Question Bank</h1>
-          <motion.button
-            className="btn-primary"
-            onClick={() => setShowForm(!showForm)}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Plus size={20} /> Add Question
-          </motion.button>
+    <div className="dashboard-container">
+      {/* Sidebar */}
+      <aside className="dashboard-sidebar">
+        <div className="sidebar-header">
+          <div className="sidebar-logo">
+            <div style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+              padding: '0.75rem',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <BookOpen size={24} color="white" />
+            </div>
+            <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1a103c' }}>SecureExam</span>
+          </div>
+          {user && (
+            <div style={{
+              marginTop: '1rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid #e5e7eb',
+              fontSize: '0.875rem'
+            }}>
+              <p style={{ color: '#6b7280', marginBottom: '0.25rem' }}>Welcome back,</p>
+              <p style={{ fontWeight: '700', color: '#1f2937' }}>{user.name || user.email}</p>
+            </div>
+          )}
         </div>
 
-        {showForm && <QuestionForm onSubmit={() => { setShowForm(false); fetchQuestions(); }} />}
+        <nav className="sidebar-nav">
+          {navigationItems.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button
+                key={item.id}
+                onClick={() => handleNavigation(item)}
+                className={`nav-item ${activeNav === item.id ? 'active' : ''}`}
+              >
+                <Icon size={20} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </nav>
 
-        <div className="qb-filters">
-          <div className="search-box">
-            <Search size={20} />
-            <input
-              type="text"
-              placeholder="Search questions..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-
-          <select value={category} onChange={(e) => setCategory(e.target.value)}>
-            <option value="">All Categories</option>
-            {categories.map(cat => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
-          </select>
-
-          <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
-            <option value="">All Difficulties</option>
-            {difficulties.map(diff => (
-              <option key={diff} value={diff}>{diff}</option>
-            ))}
-          </select>
+        <div className="sidebar-footer">
+          <button className="logout-btn" onClick={logout}>
+            <LogOut size={20} />
+            <span>Logout</span>
+          </button>
         </div>
+      </aside>
 
-        {loading ? (
-          <div className="loading">Loading questions...</div>
-        ) : (
-          <div className="questions-grid">
-            {questions.map((q, idx) => (
-              <SlideUp key={q._id} delay={idx * 0.1}>
-                <QuestionCard question={q} onDelete={() => fetchQuestions()} />
-              </SlideUp>
-            ))}
-          </div>
-        )}
+      {/* Main Content */}
+      <main className="dashboard-main">
+        <div className="dashboard-content">
+          <PageTransition>
+            <div className="question-bank-container">
+              <div className="qb-header">
+                <h1>Question Bank</h1>
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: "0 10px 25px -5px rgba(124, 58, 237, 0.5)" }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowForm(!showForm)}
+                  style={{
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                    color: 'white',
+                    padding: '0.75rem 1.5rem',
+                    borderRadius: '0.75rem',
+                    border: 'none',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.5rem',
+                    cursor: 'pointer',
+                    boxShadow: '0 4px 6px -1px rgba(124, 58, 237, 0.3)'
+                  }}
+                >
+                  <Plus size={20} color="white" strokeWidth={2.5} />
+                  <span>Add New Question</span>
+                </motion.button>
+              </div>
 
-        {!loading && questions.length === 0 && (
-          <div className="empty-state">
-            <p>No questions found</p>
-          </div>
-        )}
-      </div>
-    </PageTransition>
+              {showForm && <QuestionForm onSubmit={() => { setShowForm(false); fetchQuestions(); }} />}
+
+              <div className="qb-filters">
+                <div className="search-box">
+                  <Search size={20} />
+                  <input
+                    type="text"
+                    placeholder="Search questions..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                  <option value="">All Categories</option>
+                  {categories.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
+                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                  <option value="">All Difficulties</option>
+                  {difficulties.map(diff => (
+                    <option key={diff} value={diff}>{diff}</option>
+                  ))}
+                </select>
+              </div>
+
+              {loading ? (
+                <div className="loading">Loading questions...</div>
+              ) : (
+                <div className="questions-grid">
+                  {questions.map((q, idx) => (
+                    <SlideUp key={q._id} delay={idx * 0.1}>
+                      <QuestionCard question={q} onDelete={() => fetchQuestions()} />
+                    </SlideUp>
+                  ))}
+                </div>
+              )}
+
+              {!loading && questions.length === 0 && (
+                <div className="empty-state">
+                  <p>No questions found</p>
+                </div>
+              )}
+            </div>
+          </PageTransition>
+        </div>
+      </main>
+    </div>
   );
 };
 

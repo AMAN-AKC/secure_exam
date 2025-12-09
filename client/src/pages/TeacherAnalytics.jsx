@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
 import { jsPDF } from 'jspdf';
+import * as XLSX from 'xlsx';
 import {
   LayoutDashboard,
   FileText,
@@ -62,6 +63,7 @@ export default function TeacherAnalytics() {
   const [dateRange, setDateRange] = useState('all');
   const [selectedExam, setSelectedExam] = useState('all');
   const [exams, setExams] = useState([]);
+  const [allResults, setAllResults] = useState([]);
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -93,10 +95,11 @@ export default function TeacherAnalytics() {
       );
 
       const resultsArrays = await Promise.all(resultPromises);
-      const allResults = resultsArrays.flat().filter(r => r);
+      const allResultsFlat = resultsArrays.flat().filter(r => r);
+      setAllResults(allResultsFlat);
 
       // Calculate analytics
-      calculateAnalytics(examsRes.data, allResults);
+      calculateAnalytics(examsRes.data, allResultsFlat);
     } catch (err) {
       console.error('Failed to fetch analytics:', err);
     } finally {
@@ -260,104 +263,164 @@ export default function TeacherAnalytics() {
     setBottomStudents(studentPerf.sort((a, b) => a.avgScore - b.avgScore).slice(0, 5));
   };
 
-  // Export functions
-  const exportCSV = () => {
-    let csv = 'Type,Name,Email,Metric,Value\n';
-    csv += `Overall,Overall,Overall,Total Exams,${overallStats.totalExams}\n`;
-    csv += `Overall,Overall,Overall,Students,${overallStats.totalStudentsParticipated}\n`;
-    csv += `Overall,Overall,Overall,Average Score,${overallStats.averageScore}%\n`;
-    csv += `Overall,Overall,Overall,Pass Rate,${overallStats.passRate}%\n`;
-    csv += `Overall,Overall,Overall,Fail Rate,${overallStats.failRate}%\n`;
-    csv += `Overall,Overall,Overall,Completion Rate,${overallStats.completionRate}%\n`;
+  // Export Logic
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportType, setExportType] = useState('date'); // 'date' or 'subject'
+  const [exportDate, setExportDate] = useState(dayjs().format('YYYY-MM-DD'));
+  const [exportExamId, setExportExamId] = useState('');
+  const [exportFormat, setExportFormat] = useState('excel'); // 'excel' or 'pdf'
 
-    topStudents.forEach(s => {
-      csv += `Student,${s.name},${s.email},Average Score,${s.avgScore}%\n`;
-    });
-
-    topExamsData.forEach(e => {
-      csv += `Exam,${e.title},N/A,Average Score,${e.avgScore}%\n`;
-    });
-
-    const link = document.createElement('a');
-    link.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
-    link.download = `analytics-${dayjs().format('YYYY-MM-DD')}.csv`;
-    link.click();
+  // Helper to format duration
+  const formatDuration = (seconds) => {
+    if (!seconds) return 'N/A';
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}m ${secs}s`;
   };
 
-  const exportPDF = () => {
-    const pdf = new jsPDF();
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    let yPos = 15;
-    const lineHeight = 7;
-    const margin = 10;
+  // Calculate grade based on percentage
+  const calculateGrade = (percentage) => {
+    if (percentage >= 90) return 'A';
+    if (percentage >= 80) return 'B';
+    if (percentage >= 70) return 'C';
+    if (percentage >= 60) return 'D';
+    return 'F';
+  };
 
-    // Title
-    pdf.setFontSize(16);
-    pdf.setTextColor(124, 58, 237); // Violet color
-    pdf.text('Analytics Report', margin, yPos);
-    yPos += lineHeight + 3;
+  const generateDateReport = () => {
+    const targetDate = dayjs(exportDate);
+    // Filter results where the exam submission happened on this date
+    // OR where the exam start time was on this date.
+    // User requested "exams conducted", so we'll look at results submitted on that date primarily,
+    // or we could look at exams created/scheduled for that date. 
+    // Given the request "average score of the subject date and time", result aggregation seems best.
 
-    // Date
-    pdf.setFontSize(10);
-    pdf.setTextColor(107, 114, 128);
-    pdf.text(`Generated: ${dayjs().format('YYYY-MM-DD HH:mm')}`, margin, yPos);
-    yPos += lineHeight + 5;
+    // Group results by Exam
+    const statsByExam = {};
 
-    // Overall Statistics
-    pdf.setFontSize(12);
-    pdf.setTextColor(31, 41, 55);
-    pdf.text('Overall Statistics', margin, yPos);
-    yPos += lineHeight + 2;
+    allResults.forEach(r => {
+      const resultDate = dayjs(r.submittedAt);
+      if (resultDate.isSame(targetDate, 'day')) {
+        const examId = r.exam?._id || r.examId || r.exam;
+        const examTitle = r.exam?.title || exams.find(e => e._id === examId)?.title || 'Unknown Exam';
 
-    pdf.setFontSize(10);
-    pdf.setTextColor(75, 85, 99);
-    const stats = [
-      `Total Exams: ${overallStats.totalExams}`,
-      `Total Students: ${overallStats.totalStudentsParticipated}`,
-      `Average Score: ${overallStats.averageScore}%`,
-      `Pass Rate: ${overallStats.passRate}%`,
-      `Fail Rate: ${overallStats.failRate}%`,
-    ];
-    stats.forEach(stat => {
-      pdf.text(stat, margin + 3, yPos);
-      yPos += lineHeight;
+        if (!statsByExam[examId]) {
+          statsByExam[examId] = {
+            id: examId,
+            subject: examTitle,
+            studentCount: 0,
+            totalScore: 0,
+            date: resultDate.format('YYYY-MM-DD'),
+            time: resultDate.format('HH:mm') // Using last submission time or maybe exam start time?
+          };
+        }
+
+        statsByExam[examId].studentCount++;
+        // Handle score/percentage
+        const score = r.percentage !== undefined ? r.percentage : (r.score / r.total * 100);
+        statsByExam[examId].totalScore += score;
+      }
     });
 
-    yPos += 3;
+    const reportData = Object.values(statsByExam).map(stat => ({
+      Subject: stat.subject,
+      'Student Count': stat.studentCount,
+      'Average Score': (stat.totalScore / stat.studentCount).toFixed(2) + '%',
+      Date: stat.date,
+      Time: stat.time // Could be refined to show Exam Start Time if available in exam object
+    }));
 
-    // Top Students
-    if (topStudents.length > 0) {
-      pdf.setFontSize(12);
-      pdf.setTextColor(31, 41, 55);
-      pdf.text('Top Performing Students', margin, yPos);
-      yPos += lineHeight + 2;
+    if (exportFormat === 'excel') {
+      const ws = XLSX.utils.json_to_sheet(reportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Daily Exam Report");
+      XLSX.writeFile(wb, `Exam_Report_${exportDate}.xlsx`);
+    } else {
+      const doc = new jsPDF();
+      doc.text(`Exam Report - ${exportDate}`, 14, 15);
 
-      pdf.setFontSize(9);
-      pdf.setTextColor(75, 85, 99);
-      topStudents.slice(0, 5).forEach((student, i) => {
-        pdf.text(`${i + 1}. ${student.name} - ${student.avgScore}%`, margin + 3, yPos);
-        yPos += lineHeight;
+      let yPos = 30;
+      const headers = ['Subject', 'Count', 'Avg Score', 'Date'];
+      // Simple table
+      doc.setFontSize(10);
+      doc.text(headers.join('     '), 14, 25);
+
+      reportData.forEach(row => {
+        const line = `${row.Subject}     ${row['Student Count']}       ${row['Average Score']}     ${row.Date}`;
+        doc.text(line, 14, yPos);
+        yPos += 10;
       });
-      yPos += 3;
+      doc.save(`Exam_Report_${exportDate}.pdf`);
     }
+  };
 
-    // Top Exams
-    if (topExamsData.length > 0) {
-      pdf.setFontSize(12);
-      pdf.setTextColor(31, 41, 55);
-      pdf.text('Top Performing Exams', margin, yPos);
-      yPos += lineHeight + 2;
+  const generateSubjectReport = () => {
+    if (!exportExamId) return;
+    const selectedExamObj = exams.find(e => e._id === exportExamId);
+    const examTitle = selectedExamObj?.title || 'Exam';
 
-      pdf.setFontSize(9);
-      pdf.setTextColor(75, 85, 99);
-      topExamsData.slice(0, 5).forEach((exam, i) => {
-        pdf.text(`${i + 1}. ${exam.title} - ${exam.avgScore}%`, margin + 3, yPos);
-        yPos += lineHeight;
+    // Filter results for this exam
+    const examResults = allResults.filter(r => {
+      const rExamId = r.exam?._id || r.examId || r.exam;
+      return rExamId === exportExamId;
+    });
+
+    const reportData = examResults.map(r => {
+      const score = r.percentage !== undefined ? r.percentage : (r.score / r.total * 100);
+      return {
+        'Student Name': r.studentId?.name || r.student?.name || 'Unknown',
+        'Score': score.toFixed(2) + '%',
+        'Grade': calculateGrade(score),
+        'Time Taken': formatDuration(r.timeTaken),
+        'Submitted At': dayjs(r.submittedAt).format('YYYY-MM-DD HH:mm')
+      };
+    });
+
+    if (exportFormat === 'excel') {
+      const ws = XLSX.utils.json_to_sheet(reportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Student Results");
+      XLSX.writeFile(wb, `${examTitle}_Report.xlsx`);
+    } else {
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text(`Results: ${examTitle}`, 14, 15);
+
+      let yPos = 30;
+      const headers = ['Name', 'Score', 'Grade', 'Time Taken', 'Submitted'];
+
+      // Basic table setup
+      doc.setFontSize(10);
+      doc.setFont(undefined, 'bold');
+
+      // Draw headers with some spacing
+      const xPositions = [14, 60, 85, 110, 150];
+      headers.forEach((h, i) => doc.text(h, xPositions[i], 25));
+
+      doc.setFont(undefined, 'normal');
+      reportData.forEach(row => {
+        if (yPos > 280) {
+          doc.addPage();
+          yPos = 20;
+        }
+        doc.text(row['Student Name'].substring(0, 20), xPositions[0], yPos);
+        doc.text(row['Score'], xPositions[1], yPos);
+        doc.text(row['Grade'], xPositions[2], yPos);
+        doc.text(row['Time Taken'], xPositions[3], yPos);
+        doc.text(row['Submitted At'], xPositions[4], yPos);
+        yPos += 10;
       });
+      doc.save(`${examTitle}_Report.pdf`);
     }
+  };
 
-    pdf.save(`analytics-${dayjs().format('YYYY-MM-DD')}.pdf`);
+  const handleExport = () => {
+    if (exportType === 'date') {
+      generateDateReport();
+    } else {
+      generateSubjectReport();
+    }
+    setShowExportModal(false);
   };
 
   return (
@@ -444,14 +507,111 @@ export default function TeacherAnalytics() {
                 ))}
               </select>
 
-              <button onClick={exportCSV} style={{ padding: '0.5rem 1rem', background: '#10b981', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Download size={18} /> CSV
-              </button>
-              <button onClick={exportPDF} style={{ padding: '0.5rem 1rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '0.5rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Download size={18} /> PDF
+              <button
+                onClick={() => setShowExportModal(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: '#7c3aed',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 600
+                }}
+              >
+                <Download size={18} /> Export Report
               </button>
             </div>
           </div>
+
+          {/* Export Modal */}
+          {showExportModal && (
+            <div style={{
+              position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
+            }}>
+              <div style={{ background: 'white', padding: '2rem', borderRadius: '0.5rem', width: '400px', maxWidth: '90%' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem', color: '#1f2937' }}>Export Report</h2>
+
+                {/* Radio Group for Report Type */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Report Type</label>
+                  <div style={{ display: 'flex', gap: '1rem' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" checked={exportType === 'date'} onChange={() => setExportType('date')} />
+                      By Date
+                    </label>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
+                      <input type="radio" checked={exportType === 'subject'} onChange={() => setExportType('subject')} />
+                      By Subject
+                    </label>
+                  </div>
+                </div>
+
+                {/* Conditional Inputs */}
+                {exportType === 'date' ? (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Select Date</label>
+                    <input
+                      type="date"
+                      value={exportDate}
+                      onChange={(e) => setExportDate(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    />
+                  </div>
+                ) : (
+                  <div style={{ marginBottom: '1.5rem' }}>
+                    <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Select Subject/Exam</label>
+                    <select
+                      value={exportExamId}
+                      onChange={(e) => setExportExamId(e.target.value)}
+                      style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                    >
+                      <option value="">Select an exam...</option>
+                      {exams.map(e => <option key={e._id} value={e._id}>{e.title}</option>)}
+                    </select>
+                  </div>
+                )}
+
+                {/* Format Selection */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#374151' }}>Format</label>
+                  <select
+                    value={exportFormat}
+                    onChange={(e) => setExportFormat(e.target.value)}
+                    style={{ width: '100%', padding: '0.5rem', border: '1px solid #d1d5db', borderRadius: '0.375rem' }}
+                  >
+                    <option value="excel">Excel (.xlsx)</option>
+                    <option value="pdf">PDF (.pdf)</option>
+                  </select>
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
+                  <button
+                    onClick={() => setShowExportModal(false)}
+                    style={{ padding: '0.5rem 1rem', background: '#f3f4f6', color: '#374151', border: 'none', borderRadius: '0.375rem', cursor: 'pointer' }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleExport}
+                    disabled={exportType === 'subject' && !exportExamId}
+                    style={{
+                      padding: '0.5rem 1rem',
+                      background: (exportType === 'subject' && !exportExamId) ? '#9ca3af' : '#7c3aed',
+                      color: 'white', border: 'none', borderRadius: '0.375rem', cursor: 'pointer'
+                    }}
+                  >
+                    Download
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {loading ? (
             <div style={{ textAlign: 'center', padding: '2rem', color: '#7c3aed' }}>Loading analytics...</div>

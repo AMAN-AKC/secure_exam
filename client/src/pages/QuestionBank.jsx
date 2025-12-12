@@ -34,6 +34,9 @@ const QuestionBank = () => {
   const [difficulty, setDifficulty] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState([]);
+  
+  // Track if categories have been loaded to prevent repeated fetches
+  const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const difficulties = ['easy', 'medium', 'hard'];
 
@@ -46,8 +49,10 @@ const QuestionBank = () => {
   ];
 
   useEffect(() => {
-    fetchCategories();
-  }, []);
+    if (!categoriesLoaded) {
+      fetchCategories().then(() => setCategoriesLoaded(true)).catch(() => setCategoriesLoaded(true));
+    }
+  }, [categoriesLoaded]);
 
   const fetchCategories = async () => {
     try {
@@ -71,8 +76,6 @@ const QuestionBank = () => {
 
       if (!response.ok) {
         console.error('❌ Categories API error:', response.status, response.statusText);
-        const text = await response.text();
-        console.error('📄 Response body:', text.substring(0, 200));
         setCategories([]);
         return;
       }
@@ -80,8 +83,6 @@ const QuestionBank = () => {
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
         console.error('❌ Response is not JSON:', contentType);
-        const text = await response.text();
-        console.error('📄 Response preview:', text.substring(0, 200));
         setCategories([]);
         return;
       }
@@ -97,12 +98,13 @@ const QuestionBank = () => {
         setCategories(data.categories);
         console.log('✅ Categories loaded (no success flag):', data.categories.length);
       } else {
-        console.error('❌ Unexpected response format:', data);
+        console.warn('⚠️ Unexpected response format:', data);
         setCategories([]);
       }
     } catch (error) {
-      console.error('❌ Error fetching categories:', error);
-      setCategories([]);
+      // Silently fail on subsequent calls to prevent repeated error logging
+      console.warn('⚠️ Warning fetching categories (will retry):', error.message);
+      // Don't set categories to empty on error - keep the ones we already have
     }
   };
 
@@ -233,7 +235,12 @@ const QuestionBank = () => {
                   />
                 </div>
 
-                <select value={category} onChange={(e) => setCategory(e.target.value)}>
+                <select 
+                  value={category} 
+                  onChange={(e) => setCategory(e.target.value)}
+                  aria-label="Filter by category"
+                  title="Filter questions by category"
+                >
                   <option value="">All Categories</option>
                   {categories.map(cat => (
                     <option key={cat._id || cat.name} value={cat.name}>
@@ -242,7 +249,12 @@ const QuestionBank = () => {
                   ))}
                 </select>
 
-                <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)}>
+                <select 
+                  value={difficulty} 
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  aria-label="Filter by difficulty"
+                  title="Filter questions by difficulty"
+                >
                   <option value="">All Difficulties</option>
                   {difficulties.map(diff => (
                     <option key={diff} value={diff}>{diff}</option>

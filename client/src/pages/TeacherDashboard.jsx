@@ -16,6 +16,8 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../api.js';
+import QuestionSetupMethodModal from '../components/QuestionSetupMethodModal.jsx';
+import QuestionBankSelectionPanel from '../components/QuestionBankSelectionPanel.jsx';
 import './TeacherDashboard.css';
 
 export default function TeacherDashboard() {
@@ -53,6 +55,14 @@ export default function TeacherDashboard() {
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAllExams, setShowAllExams] = useState(false);
+  
+  // New states for question setup method
+  const [showMethodModal, setShowMethodModal] = useState(false);
+  const [questionSetupMethod, setQuestionSetupMethod] = useState(null); // 'own' | 'bank'
+  const [showQBSelectionPanel, setShowQBSelectionPanel] = useState(false);
+  const [manuallyCreatedQuestions, setManuallyCreatedQuestions] = useState([]);
+  const [selectedQuestionsFromBank, setSelectedQuestionsFromBank] = useState([]);
+  
   const [examSettings, setExamSettings] = useState({
     title: '',
     description: '',
@@ -293,6 +303,40 @@ export default function TeacherDashboard() {
     } catch (error) {
       alert('Failed to add question');
     }
+  };
+
+  // Handle method selection from modal
+  const handleMethodSelect = (method) => {
+    setQuestionSetupMethod(method);
+    setShowMethodModal(false);
+
+    if (method === 'bank') {
+      // Show QB selection panel
+      setShowQBSelectionPanel(true);
+    } else if (method === 'own') {
+      // Show manual question form
+      setShowQuestionModal(true);
+    }
+  };
+
+  // Handle QB selection
+  const handleQBSelection = (selectedQuestions) => {
+    setSelectedQuestionsFromBank(selectedQuestions);
+    setShowQBSelectionPanel(false);
+
+    if (questionSetupMethod === 'bank') {
+      // In "bank" mode, directly finalize
+      finalize();
+    } else if (questionSetupMethod === 'own') {
+      // In "own" mode, show manual form to add custom questions first
+      setShowQuestionModal(true);
+    }
+  };
+
+  // Handle "Add from QB" button in manual question form
+  const handleAddFromQB = () => {
+    setShowQuestionModal(false);
+    setShowQBSelectionPanel(true);
   };
 
   const finalize = async () => {
@@ -750,6 +794,22 @@ export default function TeacherDashboard() {
                   >
                     Go Back
                   </button>
+                  {questionSetupMethod === 'own' && (
+                    <button
+                      onClick={handleAddFromQB}
+                      style={{
+                        padding: '0.75rem 1.5rem',
+                        borderRadius: '0.5rem',
+                        cursor: 'pointer',
+                        background: '#6b21a8',
+                        color: 'white',
+                        border: 'none',
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      + Add from QB
+                    </button>
+                  )}
                   <button
                     onClick={addQuestion}
                     disabled={!text.trim() || options.some(opt => !opt.trim())}
@@ -1082,8 +1142,10 @@ export default function TeacherDashboard() {
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
                       setExam(data);
                       setShowSettingsModal(false);
-                      setShowQuestionModal(true);
-                      alert('Exam settings saved! Now add your questions.');
+                      // Show method selection modal instead of question modal
+                      setShowMethodModal(true);
+                      setQuestionSetupMethod(null);
+                      alert('Exam settings saved! Now choose how to add questions.');
                     } catch (error) {
                       alert('Failed to save exam settings');
                     } finally {
@@ -1108,6 +1170,34 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
+
+      {/* Question Setup Method Modal */}
+      {showMethodModal && (
+        <QuestionSetupMethodModal
+          onMethodSelect={handleMethodSelect}
+          onCancel={() => {
+            setShowMethodModal(false);
+            setExam(null);
+            // Reset states
+            setQuestionSetupMethod(null);
+            setManuallyCreatedQuestions([]);
+            setSelectedQuestionsFromBank([]);
+          }}
+        />
+      )}
+
+      {/* Question Bank Selection Panel */}
+      {showQBSelectionPanel && (
+        <QuestionBankSelectionPanel
+          onSelect={handleQBSelection}
+          onCancel={() => {
+            setShowQBSelectionPanel(false);
+            if (questionSetupMethod === 'own') {
+              setShowQuestionModal(true);
+            } else {
+              setShowMethodModal(true);
+            }
+          }}
+          mode="standalone"
+        />
+      )}

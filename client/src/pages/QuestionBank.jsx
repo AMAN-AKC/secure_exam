@@ -19,6 +19,9 @@ import { PageTransition, SlideUp } from '../components/Animations';
 import '../styles/QuestionBank.css';
 import './TeacherDashboard.css';
 
+// API URL configuration
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+
 const QuestionBank = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -55,7 +58,7 @@ const QuestionBank = () => {
         return;
       }
 
-      const response = await fetch('/api/categories', {
+      const response = await fetch(`${API_BASE_URL}/categories`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
 
@@ -89,7 +92,7 @@ const QuestionBank = () => {
       if (category) params.append('category', category);
       if (difficulty) params.append('difficulty', difficulty);
 
-      const response = await fetch(`/api/question-bank?${params}`, {
+      const response = await fetch(`${API_BASE_URL}/question-bank?${params}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
       const data = await response.json();
@@ -360,7 +363,7 @@ const QuestionForm = ({ onSubmit }) => {
         return;
       }
 
-      const response = await fetch('/api/categories', {
+      const response = await fetch(`${API_BASE_URL}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -439,7 +442,7 @@ const QuestionForm = ({ onSubmit }) => {
         return;
       }
 
-      const response = await fetch('/api/question-bank', {
+      const response = await fetch(`${API_BASE_URL}/question-bank`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -545,7 +548,7 @@ const QuestionForm = ({ onSubmit }) => {
       {/* Category Selection with Add New Option */}
       <div style={{ marginBottom: '1rem' }}>
         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
-          Category * (Top 8 default + 5 most-used custom)
+          Category *
         </label>
         {!showNewCategory ? (
           <div style={{ display: 'flex', gap: '0.5rem' }}>

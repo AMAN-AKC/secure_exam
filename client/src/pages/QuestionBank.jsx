@@ -46,21 +46,38 @@ const QuestionBank = () => {
     fetchCategories();
   }, []);
 
-  useEffect(() => {
-    fetchQuestions();
-  }, [search, category, difficulty]);
-
   const fetchCategories = async () => {
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('No auth token found');
+        setCategories([]);
+        return;
+      }
+
       const response = await fetch('/api/categories', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: { 'Authorization': `Bearer ${token}` }
       });
+
+      if (!response.ok) {
+        console.error('Categories API error:', response.status, response.statusText);
+        const text = await response.text();
+        console.error('Response body:', text);
+        setCategories([]);
+        return;
+      }
+
       const data = await response.json();
       if (data.success) {
         setCategories(data.categories || []);
+        console.log('✅ Categories loaded:', data.categories?.length);
+      } else {
+        console.error('API returned success: false', data);
+        setCategories([]);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
+      setCategories([]);
     }
   };
 
@@ -336,19 +353,43 @@ const QuestionForm = ({ onSubmit }) => {
 
     setCreatingCategory(true);
     try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        setError('Authentication token missing');
+        setCreatingCategory(false);
+        return;
+      }
+
       const response = await fetch('/api/categories', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ name: newCategoryName.trim() })
       });
 
-      const data = await response.json();
+      // Log response details for debugging
+      console.log('Create category response status:', response.status);
 
-      if (response.ok) {
-        setFormData({ ...formData, category: data.category.name });
+      if (!response.ok) {
+        const text = await response.text();
+        console.error('Response text:', text);
+        try {
+          const data = JSON.parse(text);
+          setError(data.error || `Server error: ${response.status}`);
+        } catch {
+          setError(`Server error: ${response.status} - ${text.substring(0, 100)}`);
+        }
+        setCreatingCategory(false);
+        return;
+      }
+
+      const data = await response.json();
+      console.log('Category created:', data);
+
+      if (data.success || response.ok) {
+        setFormData({ ...formData, category: data.category?.name || newCategoryName.trim() });
         setNewCategoryName('');
         setShowNewCategory(false);
         setError('');

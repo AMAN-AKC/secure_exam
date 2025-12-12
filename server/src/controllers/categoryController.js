@@ -27,14 +27,12 @@ export const getCategories = async (req, res) => {
   try {
     // Get all default categories
     const defaultCategories = await Category.find({ isDefault: true })
-      .sort({ createdAt: 1 })
-      .populate('createdBy', 'name email');
+      .sort({ createdAt: 1 });
 
     // Get top 5 custom categories by usage count
     const customCategories = await Category.find({ isDefault: false })
       .sort({ usageCount: -1, lastUsedAt: -1 })
-      .limit(5)
-      .populate('createdBy', 'name email');
+      .limit(5);
 
     // Combine: defaults first, then custom
     const allCategories = [...defaultCategories, ...customCategories];
@@ -51,7 +49,7 @@ export const getCategories = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching categories:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ success: false, error: error.message });
   }
 };
 

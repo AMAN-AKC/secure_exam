@@ -520,26 +520,36 @@ const QuestionForm = ({ onSubmit }) => {
                 backgroundRepeat: 'no-repeat',
                 backgroundPosition: 'right 0.75rem center',
                 backgroundSize: '1.5em 1.5em',
-                cursor: 'pointer'
+                cursor: 'pointer',
+                zIndex: 10
               }}
               onFocus={inputFocusHandler}
               onBlur={inputBlurHandler}
             >
               <option value="">Select Category</option>
-              {categories.map(cat => (
-                <option key={cat._id || cat.name} value={cat.name}>
-                  {cat.name}
-                  {cat.isDefault ? ' (Default)' : ` (${cat.usageCount || 0} questions)`}
-                </option>
-              ))}
+              {categories && categories.length > 0 ? (
+                categories.map(cat => (
+                  <option key={cat._id || cat.name} value={cat.name}>
+                    {cat.name}
+                    {cat.isDefault ? ' (Default)' : ` (${cat.usageCount || 0} questions)`}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Loading categories...</option>
+              )}
             </select>
             <motion.button
               type="button"
               onClick={() => setShowNewCategory(true)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               style={{
                 padding: '0.875rem 1.25rem',
+                height: '3.5rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
                 background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                 color: 'white',
                 border: 'none',
@@ -549,10 +559,7 @@ const QuestionForm = ({ onSubmit }) => {
                 fontSize: '0.875rem',
                 whiteSpace: 'nowrap',
                 boxShadow: '0 4px 15px -3px rgba(16, 185, 129, 0.3)',
-                transition: 'all 0.3s ease',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
+                transition: 'all 0.3s ease'
               }}
             >
               <Plus size={18} /> New

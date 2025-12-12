@@ -29,7 +29,11 @@ const AuditLogSchema = new mongoose.Schema(
         'admin_approval_given',
         'admin_rejection_given',
         'security_alert',
-        'bulk_student_import'
+        'bulk_student_import',
+        'question_bank_created',
+        'question_bank_modified',
+        'question_bank_deleted',
+        'question_bank_approved'
       ],
       required: true
     },
@@ -49,7 +53,7 @@ const AuditLogSchema = new mongoose.Schema(
     // What was acted upon
     targetType: {
       type: String,
-      enum: ['Exam', 'Result', 'User', 'Registration', 'System'],
+      enum: ['Exam', 'Result', 'User', 'Registration', 'System', 'QuestionBank'],
       required: true
     },
     targetId: {

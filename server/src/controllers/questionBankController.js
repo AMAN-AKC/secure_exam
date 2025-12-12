@@ -38,7 +38,7 @@ export const createQuestion = async (req, res) => {
     // Increment category usage count
     await incrementCategoryUsage(category);
 
-    await logAuditEvent(req, req.user.id, 'exam_created', 'Exam', question._id, null, `Created question: ${title}`);
+    await logAuditEvent(req, req.user.id, 'question_bank_created', 'QuestionBank', question._id, null, `Created question: ${title}`);
 
     res.status(201).json({
       message: 'Question created successfully',
@@ -142,7 +142,7 @@ export const updateQuestion = async (req, res) => {
 
     const updated = await QuestionBank.findByIdAndUpdate(id, req.body, { new: true });
 
-    await logAuditEvent(req, req.user.id, 'exam_modified', 'Exam', id, null, `Updated question: ${question.title}`);
+    await logAuditEvent(req, req.user.id, 'question_bank_modified', 'QuestionBank', id, null, `Updated question: ${question.title}`);
 
     res.json({
       message: 'Question updated successfully',
@@ -174,7 +174,7 @@ export const deleteQuestion = async (req, res) => {
     question.deletedAt = new Date();
     await question.save();
 
-    await logAuditEvent(req, req.user.id, 'exam_deleted', 'Exam', id, null, `Deleted question: ${question.title}`);
+    await logAuditEvent(req, req.user.id, 'question_bank_deleted', 'QuestionBank', id, null, `Deleted question: ${question.title}`);
 
     res.json({ message: 'Question deleted successfully' });
   } catch (error) {
@@ -209,7 +209,7 @@ export const approveQuestion = async (req, res) => {
       return res.status(404).json({ error: 'Question not found' });
     }
 
-    await logAuditEvent(req, req.user.id, 'exam_approved', 'Exam', id, null, `Approved question: ${question.title}`);
+    await logAuditEvent(req, req.user.id, 'question_bank_approved', 'QuestionBank', id, null, `Approved question: ${question.title}`);
 
     res.json({
       message: 'Question approved successfully',

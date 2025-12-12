@@ -171,12 +171,22 @@
 }
 
 .btn-sm.btn-danger {
-  color: var(--danger);
+  background-color: #fecaca !important;
+  color: #991b1b !important;
+  border-color: #fca5a5 !important;
 }
 
 .btn-sm.btn-danger:hover {
-  background-color: var(--danger-light);
-  border-color: var(--danger);
+  background-color: #fca5a5 !important;
+  border-color: #f87171 !important;
+  color: #7f1d1d !important;
+}
+
+.btn-sm.btn-danger:disabled {
+  background-color: #fedede;
+  color: #991b1b;
+  opacity: 0.8;
+  cursor: not-allowed;
 }
 
 .question-form {

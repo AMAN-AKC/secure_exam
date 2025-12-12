@@ -116,7 +116,10 @@ const QuestionBank = () => {
       if (category) params.append('category', category);
       if (difficulty) params.append('difficulty', difficulty);
 
-      const response = await fetch(`${API_BASE_URL}/question-bank?${params}`, {
+      const queryString = params.toString();
+      console.log('🔍 Fetching questions with filters:', { search, category, difficulty, queryString });
+
+      const response = await fetch(`${API_BASE_URL}/question-bank?${queryString}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
 
@@ -127,6 +130,7 @@ const QuestionBank = () => {
       }
 
       const data = await response.json();
+      console.log('✅ Questions fetched:', data.questions?.length || 0, 'questions');
       setQuestions(data.questions || []);
     } catch (error) {
       console.error('❌ Error fetching questions:', error);
@@ -307,6 +311,7 @@ const QuestionBank = () => {
 
 const QuestionCard = ({ question, onDelete }) => {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
 
   const handleDelete = async () => {
     if (!window.confirm('Are you sure you want to delete this question?')) {
@@ -341,42 +346,169 @@ const QuestionCard = ({ question, onDelete }) => {
   };
 
   return (
-    <motion.div className="question-card" whileHover={{ y: -5 }}>
-      <div className="qc-header">
-        <h3>{question.title}</h3>
-        <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
-      </div>
-
-      <p className="qc-category">{question.category}</p>
-      <p className="qc-content">{question.content.substring(0, 100)}...</p>
-
-      <div className="qc-stats">
-        <div className="stat">
-          <Clock size={16} />
-          <span>{question.usageCount || 0} uses</span>
+    <>
+      <motion.div className="question-card" whileHover={{ y: -5 }}>
+        <div className="qc-header">
+          <h3>{question.title}</h3>
+          <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
         </div>
-        {question.isApproved && (
-          <div className="stat approved">
-            <CheckCircle size={16} />
-            <span>Approved</span>
-          </div>
-        )}
-      </div>
 
-      <div className="qc-footer">
-        <button className="btn-sm" disabled>
-          Edit
-        </button>
-        <button 
-          className="btn-sm btn-danger" 
-          onClick={handleDelete}
-          disabled={isDeleting}
-        >
-          <Trash2 size={16} />
-          {isDeleting ? 'Deleting...' : 'Delete'}
-        </button>
-      </div>
-    </motion.div>
+        <p className="qc-category">{question.category}</p>
+        <p className="qc-content">{question.content.substring(0, 100)}...</p>
+
+        <div className="qc-stats">
+          <div className="stat">
+            <Clock size={16} />
+            <span>{question.usageCount || 0} uses</span>
+          </div>
+          {question.isApproved && (
+            <div className="stat approved">
+              <CheckCircle size={16} />
+              <span>Approved</span>
+            </div>
+          )}
+        </div>
+
+        <div className="qc-footer">
+          <button 
+            className="btn-sm" 
+            onClick={() => setShowDetails(true)}
+            style={{
+              background: '#e0e7ff',
+              color: '#4f46e5',
+              border: '1px solid #c7d2fe'
+            }}
+          >
+            View
+          </button>
+          <button 
+            className="btn-sm" 
+            disabled
+            style={{
+              opacity: 0.5
+            }}
+          >
+            Edit
+          </button>
+          <button 
+            className="btn-sm btn-danger" 
+            onClick={handleDelete}
+            disabled={isDeleting}
+            style={{
+              background: isDeleting ? '#fee2e2' : '#fecaca',
+              color: '#991b1b',
+              border: '1px solid #fca5a5'
+            }}
+          >
+            <Trash2 size={16} />
+            {isDeleting ? 'Deleting...' : 'Delete'}
+          </button>
+        </div>
+      </motion.div>
+
+      {/* Details Modal */}
+      {showDetails && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 100
+        }}>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{
+              background: 'white',
+              borderRadius: '1rem',
+              padding: '2rem',
+              maxWidth: '600px',
+              width: '90%',
+              maxHeight: '80vh',
+              overflowY: 'auto',
+              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
+            }}
+          >
+            <h2 style={{ color: '#1f2937', marginBottom: '1rem' }}>{question.title}</h2>
+            
+            <div style={{ marginBottom: '1.5rem' }}>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                <strong>Category:</strong> {question.category}
+              </p>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                <strong>Difficulty:</strong> <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
+              </p>
+              <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                <strong>Points:</strong> {question.points || 1}
+              </p>
+              {question.negativeMark !== undefined && (
+                <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
+                  <strong>Negative Mark:</strong> {question.negativeMark}
+                </p>
+              )}
+            </div>
+
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h3 style={{ color: '#1f2937', marginBottom: '0.75rem' }}>Question</h3>
+              <p style={{ color: '#374151', lineHeight: '1.6' }}>{question.content}</p>
+            </div>
+
+            {question.options && question.options.length > 0 && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ color: '#1f2937', marginBottom: '0.75rem' }}>Options</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {question.options.map((opt, idx) => (
+                    <div
+                      key={idx}
+                      style={{
+                        padding: '0.75rem',
+                        background: opt.isCorrect ? '#d1fae5' : '#f3f4f6',
+                        borderLeft: opt.isCorrect ? '4px solid #10b981' : '4px solid #d1d5db',
+                        borderRadius: '0.375rem',
+                        color: '#1f2937'
+                      }}
+                    >
+                      <strong>{String.fromCharCode(65 + idx)}.</strong> {opt.text || opt}
+                      {opt.isCorrect && <span style={{ color: '#10b981', marginLeft: '0.5rem' }}>✓ Correct</span>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {question.description && (
+              <div style={{ marginBottom: '1.5rem' }}>
+                <h3 style={{ color: '#1f2937', marginBottom: '0.75rem' }}>Description</h3>
+                <p style={{ color: '#374151', lineHeight: '1.6' }}>{question.description}</p>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #e5e7eb', paddingTop: '1rem' }}>
+              <button
+                onClick={() => setShowDetails(false)}
+                style={{
+                  flex: 1,
+                  padding: '0.75rem 1.5rem',
+                  background: '#7c3aed',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </>
   );
 };
 

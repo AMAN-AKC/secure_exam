@@ -370,15 +370,55 @@ const QuestionForm = ({ onSubmit }) => {
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch('/api/categories', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      const token = localStorage.getItem('token');
+      if (!token) {
+        console.error('❌ No auth token found');
+        setCategories([]);
+        return;
+      }
+
+      console.log('📥 Fetching categories from:', `${API_BASE_URL}/categories`);
+
+      const response = await fetch(`${API_BASE_URL}/categories`, {
+        headers: { 
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
       });
+
+      console.log('📊 Categories API response status:', response.status);
+
+      if (!response.ok) {
+        console.error('❌ Categories API error:', response.status, response.statusText);
+        setCategories([]);
+        return;
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        console.error('❌ Response is not JSON:', contentType);
+        setCategories([]);
+        return;
+      }
+
       const data = await response.json();
-      if (data.success) {
-        setCategories(data.categories || []);
+      console.log('📦 Full response data:', data);
+      
+      if (data.success && data.categories) {
+        setCategories(data.categories);
+        console.log('✅ Categories loaded:', data.categories.length, 'categories');
+      } else if (Array.isArray(data.categories)) {
+        // Handle case where response doesn't have success flag but has categories array
+        setCategories(data.categories);
+        console.log('✅ Categories loaded (no success flag):', data.categories.length);
+      } else {
+        console.warn('⚠️ Unexpected response format:', data);
+        setCategories([]);
       }
     } catch (error) {
-      console.error('Error fetching categories:', error);
+      // Silently fail on subsequent calls to prevent repeated error logging
+      console.warn('⚠️ Warning fetching categories (will retry):', error.message);
+      // Don't set categories to empty on error - keep the ones we already have
     }
   };
 

@@ -119,10 +119,18 @@ const QuestionBank = () => {
       const response = await fetch(`${API_BASE_URL}/question-bank?${params}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       });
+
+      if (!response.ok) {
+        console.error('❌ Error fetching questions:', response.status, response.statusText);
+        setQuestions([]);
+        return;
+      }
+
       const data = await response.json();
       setQuestions(data.questions || []);
     } catch (error) {
-      console.error('Error fetching questions:', error);
+      console.error('❌ Error fetching questions:', error);
+      setQuestions([]);
     } finally {
       setLoading(false);
     }
@@ -136,6 +144,16 @@ const QuestionBank = () => {
     else if (item.id === 'analytics') navigate('/teacher/analytics');
     else if (item.id === 'history') navigate('/teacher/history');
   };
+
+  // Fetch categories on mount
+  useEffect(() => {
+    fetchCategories().then(() => setCategoriesLoaded(true)).catch(() => setCategoriesLoaded(true));
+  }, []);
+
+  // Fetch questions whenever filters change
+  useEffect(() => {
+    fetchQuestions();
+  }, [search, category, difficulty]);
 
   return (
     <div className="dashboard-container">
@@ -408,11 +426,6 @@ const QuestionForm = ({ onSubmit }) => {
   useEffect(() => {
     fetchCategories();
   }, []);
-
-  // Fetch questions whenever filters change
-  useEffect(() => {
-    fetchQuestions();
-  }, [search, category, difficulty]);
 
   const fetchCategories = async () => {
     try {

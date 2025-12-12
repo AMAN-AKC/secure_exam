@@ -290,6 +290,11 @@ export default function TeacherDashboard() {
       return;
     }
     try {
+      // Add manual question to local state first
+      const newQuestion = { text, options, correctIndex: Number(correctIndex) };
+      setManuallyCreatedQuestions([...manuallyCreatedQuestions, newQuestion]);
+      
+      // Also add to exam via API
       const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
         text,
         options,
@@ -320,16 +325,35 @@ export default function TeacherDashboard() {
   };
 
   // Handle QB selection
-  const handleQBSelection = (selectedQuestions) => {
-    setSelectedQuestionsFromBank(selectedQuestions);
-    setShowQBSelectionPanel(false);
+  const handleQBSelection = async (selectedQuestions) => {
+    try {
+      setSelectedQuestionsFromBank(selectedQuestions);
+      
+      // Add each QB question to the exam
+      let updatedExam = exam;
+      for (const question of selectedQuestions) {
+        const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
+          questionBankId: question._id, // Send the question bank ID instead of full question data
+          text: question.title,
+          options: question.options,
+          correctIndex: question.options.findIndex(opt => opt.isCorrect)
+        });
+        updatedExam = data;
+      }
+      
+      setExam(updatedExam);
+      setShowQBSelectionPanel(false);
 
-    if (questionSetupMethod === 'bank') {
-      // In "bank" mode, directly finalize
-      finalize();
-    } else if (questionSetupMethod === 'own') {
-      // In "own" mode, show manual form to add custom questions first
-      setShowQuestionModal(true);
+      if (questionSetupMethod === 'bank') {
+        // In "bank" mode, directly finalize after QB selection
+        await finalize();
+      } else if (questionSetupMethod === 'own') {
+        // In "own" mode, show manual form to add custom questions first
+        setShowQuestionModal(true);
+      }
+    } catch (error) {
+      console.error('Error adding QB questions:', error);
+      alert('Failed to add questions from Question Bank');
     }
   };
 

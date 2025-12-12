@@ -585,8 +585,8 @@ const QuestionForm = ({ onSubmit }) => {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               style={{
-                padding: '0.875rem 1.25rem',
-                height: '3.5rem',
+                padding: '0.75rem 1.25rem',
+                height: '3rem',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

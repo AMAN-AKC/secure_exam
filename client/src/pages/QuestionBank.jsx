@@ -288,6 +288,40 @@ const QuestionBank = () => {
 };
 
 const QuestionCard = ({ question, onDelete }) => {
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDelete = async () => {
+    if (!window.confirm('Are you sure you want to delete this question?')) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`${API_BASE_URL}/question-bank/${question._id}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        alert(`Failed to delete: ${error.error || 'Unknown error'}`);
+        return;
+      }
+
+      alert('Question deleted successfully');
+      onDelete();
+    } catch (error) {
+      console.error('Error deleting question:', error);
+      alert('Error deleting question');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <motion.div className="question-card" whileHover={{ y: -5 }}>
       <div className="qc-header">
@@ -312,9 +346,16 @@ const QuestionCard = ({ question, onDelete }) => {
       </div>
 
       <div className="qc-footer">
-        <button className="btn-sm">Edit</button>
-        <button className="btn-sm btn-danger">
+        <button className="btn-sm" disabled>
+          Edit
+        </button>
+        <button 
+          className="btn-sm btn-danger" 
+          onClick={handleDelete}
+          disabled={isDeleting}
+        >
           <Trash2 size={16} />
+          {isDeleting ? 'Deleting...' : 'Delete'}
         </button>
       </div>
     </motion.div>
@@ -367,6 +408,11 @@ const QuestionForm = ({ onSubmit }) => {
   useEffect(() => {
     fetchCategories();
   }, []);
+
+  // Fetch questions whenever filters change
+  useEffect(() => {
+    fetchQuestions();
+  }, [search, category, difficulty]);
 
   const fetchCategories = async () => {
     try {

@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import { connectDb } from './config/db.js';
-import { seedAdminIfNeeded, seedSampleData } from './config/seed.js';
+import { seedAdminIfNeeded, seedSampleData, seedDefaultCategories } from './config/seed.js';
 import router from './routes/index.js';
 
 dotenv.config();
@@ -32,6 +32,7 @@ const PORT = process.env.PORT || 4000;
 connectDb()
   .then(async () => {
     await seedAdminIfNeeded();
+    await seedDefaultCategories();
     
     // Only seed sample data if explicitly enabled via environment variable
     if (process.env.SEED_SAMPLE_DATA === 'true') {

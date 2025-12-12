@@ -1,4 +1,5 @@
 import { QuestionBank } from '../models/QuestionBank.js';
+import { incrementCategoryUsage } from './categoryController.js';
 import { logAuditEvent } from '../utils/auditLog.js';
 
 /**
@@ -33,6 +34,9 @@ export const createQuestion = async (req, res) => {
       createdBy: `${req.user.name} (${req.user.role})`,
       status: req.user.role === 'admin' ? 'approved' : 'pending_review'
     });
+
+    // Increment category usage count
+    await incrementCategoryUsage(category);
 
     await logAuditEvent(req, req.user.id, 'question_bank_created', 'QuestionBank', question._id, null, `Created question: ${title}`);
 

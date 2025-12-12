@@ -1,5 +1,6 @@
 ﻿import { User } from '../models/User.js';
 import { Exam } from '../models/Exam.js';
+import { Category } from '../models/Category.js';
 import { hashPassword } from '../middlewares/auth.js';
 import { sha256, aesEncrypt } from '../utils/crypto.js';
 
@@ -44,6 +45,47 @@ export async function seedAdminIfNeeded() {
   console.log('✅ Admin account seeded (DEMO MODE - OTP in terminal)');
   console.log('📧 Email: admin@secureexam.com');
   console.log('🔑 Password: admin@123456');
+}
+
+export async function seedDefaultCategories() {
+  try {
+    // Check if default categories already exist
+    const existing = await Category.findOne({ isDefault: true });
+    if (existing) return;
+
+    const defaultCategories = [
+      { name: 'math', description: 'Mathematics questions' },
+      { name: 'science', description: 'Science questions' },
+      { name: 'english', description: 'English questions' },
+      { name: 'history', description: 'History questions' },
+      { name: 'geography', description: 'Geography questions' },
+      { name: 'reasoning', description: 'Reasoning & Logic questions' },
+      { name: 'technology', description: 'Technology & IT questions' },
+      { name: 'general', description: 'General Knowledge questions' }
+    ];
+
+    // Get or create a system admin for creating default categories
+    let admin = await User.findOne({ role: 'admin' });
+    if (!admin) {
+      admin = await User.findOne({ email: 'admin@secureexam.com' });
+    }
+    if (!admin) {
+      console.log('⚠️  No admin found, skipping default category seeding');
+      return;
+    }
+
+    for (const cat of defaultCategories) {
+      await Category.create({
+        ...cat,
+        isDefault: true,
+        createdBy: admin._id
+      });
+    }
+
+    console.log('✅ Default categories seeded');
+  } catch (error) {
+    console.error('Error seeding default categories:', error.message);
+  }
 }
 
 export async function seedSampleData() {

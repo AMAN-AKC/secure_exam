@@ -11,7 +11,8 @@ import {
   FileText,
   BarChart2,
   LogOut,
-  BookOpen
+  BookOpen,
+  Send
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext.jsx';
 import { PageTransition, SlideUp } from '../components/Animations';
@@ -29,8 +30,8 @@ const QuestionBank = () => {
   const [category, setCategory] = useState('');
   const [difficulty, setDifficulty] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [categories, setCategories] = useState([]);
 
-  const categories = ['math', 'science', 'english', 'history', 'geography', 'reasoning', 'technology', 'general'];
   const difficulties = ['easy', 'medium', 'hard'];
 
   const navigationItems = [
@@ -42,8 +43,26 @@ const QuestionBank = () => {
   ];
 
   useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  useEffect(() => {
     fetchQuestions();
   }, [search, category, difficulty]);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
 
   const fetchQuestions = async () => {
     try {
@@ -175,7 +194,9 @@ const QuestionBank = () => {
                 <select value={category} onChange={(e) => setCategory(e.target.value)}>
                   <option value="">All Categories</option>
                   {categories.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
+                    <option key={cat._id || cat.name} value={cat.name}>
+                      {cat.name} {cat.isDefault ? '(Default)' : ''}
+                    </option>
                   ))}
                 </select>
 
@@ -252,15 +273,131 @@ const QuestionForm = ({ onSubmit }) => {
     category: '',
     difficulty: 'medium',
     content: '',
-    options: ['', '', '', ''],
-    correctIndex: 0,
+    options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }],
     points: 1,
-    negativeMark: 0
+    negativeMark: 0,
+    description: ''
   });
+
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+
+  // Reusable input styles
+  const inputStyle = {
+    width: '100%',
+    padding: '0.875rem 1rem',
+    marginBottom: '1.25rem',
+    border: '2px solid #e5e7eb',
+    borderRadius: '0.625rem',
+    fontSize: '0.95rem',
+    fontFamily: 'inherit',
+    transition: 'all 0.3s ease',
+    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)'
+  };
+
+  const inputFocusHandler = (e) => {
+    e.target.style.borderColor = '#7c3aed';
+    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(124, 58, 237, 0.1)';
+  };
+
+  const inputBlurHandler = (e) => {
+    e.target.style.borderColor = '#e5e7eb';
+    e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.05)';
+  };
+
+  // Fetch categories on mount
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch('/api/categories', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      setError('Category name is required');
+      return;
+    }
+
+    setCreatingCategory(true);
+    try {
+      const response = await fetch('/api/categories', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ name: newCategoryName.trim() })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setFormData({ ...formData, category: data.category.name });
+        setNewCategoryName('');
+        setShowNewCategory(false);
+        setError('');
+        await fetchCategories();
+        alert('✅ Category created successfully!');
+      } else {
+        setError(data.error || 'Failed to create category');
+      }
+    } catch (error) {
+      console.error('Error creating category:', error);
+      setError('Error creating category: ' + error.message);
+    } finally {
+      setCreatingCategory(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true);
+
     try {
+      // Validation
+      if (!formData.title.trim()) {
+        setError('Question title is required');
+        setLoading(false);
+        return;
+      }
+      if (!formData.category) {
+        setError('Please select a category');
+        setLoading(false);
+        return;
+      }
+      if (!formData.content.trim()) {
+        setError('Question content is required');
+        setLoading(false);
+        return;
+      }
+      if (formData.options.some(opt => !opt.text.trim())) {
+        setError('All options must have text');
+        setLoading(false);
+        return;
+      }
+      if (!formData.options.some(opt => opt.isCorrect)) {
+        setError('At least one option must be marked as correct');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch('/api/question-bank', {
         method: 'POST',
         headers: {
@@ -270,17 +407,72 @@ const QuestionForm = ({ onSubmit }) => {
         body: JSON.stringify(formData)
       });
 
+      const data = await response.json();
+
       if (response.ok) {
+        alert('✅ Question created successfully!');
+        setFormData({
+          title: '',
+          category: '',
+          difficulty: 'medium',
+          content: '',
+          options: [{ text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }, { text: '', isCorrect: false }],
+          points: 1,
+          negativeMark: 0,
+          description: ''
+        });
         onSubmit();
+      } else {
+        setError(data.error || 'Failed to create question');
       }
     } catch (error) {
       console.error('Error creating question:', error);
+      setError('Error creating question: ' + error.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <motion.form className="question-form" onSubmit={handleSubmit}>
-      <h2>Create New Question</h2>
+    <motion.form
+      className="question-form"
+      onSubmit={handleSubmit}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4 }}
+      style={{
+        background: 'linear-gradient(135deg, #ffffff 0%, #f8fafc 100%)',
+        borderRadius: '1rem',
+        padding: '2rem',
+        boxShadow: '0 20px 50px -15px rgba(0, 0, 0, 0.1)',
+        border: '1px solid rgba(124, 58, 237, 0.1)',
+        maxWidth: '600px',
+        margin: '2rem auto'
+      }}
+    >
+      <div style={{ marginBottom: '1.5rem' }}>
+        <h2 style={{ fontSize: '1.75rem', fontWeight: '800', color: '#1f2937', margin: 0 }}>📝 Create New Question</h2>
+        <p style={{ fontSize: '0.875rem', color: '#6b7280', marginTop: '0.5rem' }}>Add a new question to your question bank</p>
+      </div>
+
+      {error && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          style={{
+            color: '#991b1b',
+            marginBottom: '1rem',
+            padding: '1rem',
+            background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+            borderRadius: '0.75rem',
+            borderLeft: '4px solid #dc2626',
+            fontSize: '0.9rem',
+            fontWeight: '500'
+          }}
+        >
+          ⚠️ {error}
+        </motion.div>
+      )}
 
       <input
         type="text"
@@ -288,13 +480,150 @@ const QuestionForm = ({ onSubmit }) => {
         value={formData.title}
         onChange={(e) => setFormData({ ...formData, title: e.target.value })}
         required
+        style={{
+          width: '100%',
+          padding: '0.875rem 1rem',
+          marginBottom: '1.25rem',
+          border: '2px solid #e5e7eb',
+          borderRadius: '0.625rem',
+          fontSize: '1rem',
+          fontFamily: 'inherit',
+          transition: 'all 0.3s ease',
+          boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.05)'
+        }}
+        onFocus={(e) => {
+          e.target.style.borderColor = '#7c3aed';
+          e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.05), 0 0 0 3px rgba(124, 58, 237, 0.1)';
+        }}
+        onBlur={(e) => {
+          e.target.style.borderColor = '#e5e7eb';
+          e.target.style.boxShadow = 'inset 0 2px 4px rgba(0, 0, 0, 0.05)';
+        }}
       />
 
-      <select value={formData.category} onChange={(e) => setFormData({ ...formData, category: e.target.value })}>
-        <option>Select Category</option>
-        <option value="math">Math</option>
-        <option value="science">Science</option>
-        <option value="english">English</option>
+      {/* Category Selection with Add New Option */}
+      <div style={{ marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>
+          Category * (Top 8 default + 5 most-used custom)
+        </label>
+        {!showNewCategory ? (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <select
+              value={formData.category}
+              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              style={{
+                ...inputStyle,
+                flex: 1,
+                appearance: 'none',
+                paddingRight: '2.5rem',
+                backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%237c3aed%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e")',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'right 0.75rem center',
+                backgroundSize: '1.5em 1.5em',
+                cursor: 'pointer'
+              }}
+              onFocus={inputFocusHandler}
+              onBlur={inputBlurHandler}
+            >
+              <option value="">Select Category</option>
+              {categories.map(cat => (
+                <option key={cat._id || cat.name} value={cat.name}>
+                  {cat.name}
+                  {cat.isDefault ? ' (Default)' : ` (${cat.usageCount || 0} questions)`}
+                </option>
+              ))}
+            </select>
+            <motion.button
+              type="button"
+              onClick={() => setShowNewCategory(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              style={{
+                padding: '0.875rem 1.25rem',
+                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.625rem',
+                cursor: 'pointer',
+                fontWeight: '700',
+                fontSize: '0.875rem',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 4px 15px -3px rgba(16, 185, 129, 0.3)',
+                transition: 'all 0.3s ease',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem'
+              }}
+            >
+              <Plus size={18} /> New
+            </motion.button>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <input
+              type="text"
+              placeholder="Enter new category name..."
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <button
+              type="button"
+              onClick={handleCreateCategory}
+              disabled={creatingCategory}
+              style={{
+                padding: '0.75rem 1rem',
+                background: '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: creatingCategory ? 'not-allowed' : 'pointer',
+                fontWeight: '600',
+                fontSize: '0.875rem',
+                opacity: creatingCategory ? 0.5 : 1
+              }}
+            >
+              {creatingCategory ? 'Creating...' : 'Create'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowNewCategory(false); setNewCategoryName(''); }}
+              style={{
+                padding: '0.75rem 1rem',
+                background: '#6b7280',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontWeight: '600',
+                fontSize: '0.875rem'
+              }}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+      </div>
+
+      <select
+        value={formData.difficulty}
+        onChange={(e) => setFormData({ ...formData, difficulty: e.target.value })}
+        style={{
+          ...inputStyle,
+          appearance: 'none',
+          paddingRight: '2.5rem',
+          backgroundImage: 'url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27%237c3aed%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e")',
+          backgroundRepeat: 'no-repeat',
+          backgroundPosition: 'right 0.75rem center',
+          backgroundSize: '1.5em 1.5em',
+          cursor: 'pointer'
+        }}
+        onFocus={inputFocusHandler}
+        onBlur={inputBlurHandler}
+      >
+        <option value="easy">Easy</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
       </select>
 
       <textarea
@@ -302,23 +631,157 @@ const QuestionForm = ({ onSubmit }) => {
         value={formData.content}
         onChange={(e) => setFormData({ ...formData, content: e.target.value })}
         required
+        rows={3}
+        style={{
+          ...inputStyle,
+          resize: 'vertical',
+          minHeight: '7rem'
+        }}
+        onFocus={inputFocusHandler}
+        onBlur={inputBlurHandler}
       />
 
-      {formData.options.map((opt, idx) => (
-        <input
-          key={idx}
-          type="text"
-          placeholder={`Option ${idx + 1}`}
-          value={opt}
-          onChange={(e) => {
-            const newOpts = [...formData.options];
-            newOpts[idx] = e.target.value;
-            setFormData({ ...formData, options: newOpts });
-          }}
-        />
-      ))}
+      <textarea
+        placeholder="Description (optional)"
+        value={formData.description}
+        onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+        style={{
+          ...inputStyle,
+          resize: 'vertical',
+          minHeight: '5rem'
+        }}
+        onFocus={inputFocusHandler}
+        onBlur={inputBlurHandler}
+        rows={2}
+      />
 
-      <button type="submit" className="btn-primary">Create Question</button>
+      <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
+        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Options:</label>
+        {formData.options.map((opt, idx) => (
+          <div key={idx} style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.75rem', alignItems: 'center' }}>
+            <input
+              type="text"
+              placeholder={`Option ${idx + 1}`}
+              value={opt.text}
+              onChange={(e) => {
+                const newOpts = [...formData.options];
+                newOpts[idx].text = e.target.value;
+                setFormData({ ...formData, options: newOpts });
+              }}
+              style={{
+                ...inputStyle,
+                flex: 1,
+                marginBottom: 0
+              }}
+              onFocus={inputFocusHandler}
+              onBlur={inputBlurHandler}
+            />
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}>
+              <input
+                type="checkbox"
+                checked={opt.isCorrect}
+                onChange={(e) => {
+                  const newOpts = [...formData.options];
+                  newOpts[idx].isCorrect = e.target.checked;
+                  setFormData({ ...formData, options: newOpts });
+                }}
+              />
+              <span style={{ fontSize: '0.875rem' }}>Correct</span>
+            </label>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '1rem' }}>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Points</label>
+          <input
+            type="number"
+            value={formData.points}
+            onChange={(e) => setFormData({ ...formData, points: Math.max(0.25, parseFloat(e.target.value) || 1) })}
+            step="0.25"
+            min="0.25"
+            style={{
+              ...inputStyle,
+              marginBottom: 0
+            }}
+            onFocus={inputFocusHandler}
+            onBlur={inputBlurHandler}
+          />
+        </div>
+        <div style={{ flex: 1 }}>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', fontSize: '0.875rem' }}>Negative Mark</label>
+          <input
+            type="number"
+            value={formData.negativeMark}
+            onChange={(e) => setFormData({ ...formData, negativeMark: Math.max(0, parseFloat(e.target.value) || 0) })}
+            step="0.25"
+            min="0"
+            style={{
+              ...inputStyle,
+              marginBottom: 0
+            }}
+            onFocus={inputFocusHandler}
+            onBlur={inputBlurHandler}
+          />
+        </div>
+      </div>
+
+      <motion.button
+        type="submit"
+        disabled={loading}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        style={{
+          width: '100%',
+          padding: '1rem',
+          marginTop: '1.5rem',
+          background: loading ? '#9ca3af' : 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+          color: 'white',
+          border: 'none',
+          borderRadius: '0.75rem',
+          fontSize: '1rem',
+          fontWeight: '700',
+          cursor: loading ? 'not-allowed' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '0.75rem',
+          boxShadow: loading ? 'none' : '0 10px 25px -5px rgba(124, 58, 237, 0.4)',
+          transition: 'all 0.3s ease',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+        onMouseEnter={(e) => {
+          if (!loading) {
+            e.target.style.boxShadow = '0 20px 35px -5px rgba(124, 58, 237, 0.6)';
+            e.target.style.transform = 'translateY(-2px)';
+          }
+        }}
+        onMouseLeave={(e) => {
+          if (!loading) {
+            e.target.style.boxShadow = '0 10px 25px -5px rgba(124, 58, 237, 0.4)';
+            e.target.style.transform = 'translateY(0)';
+          }
+        }}
+      >
+        {loading ? (
+          <>
+            <motion.div
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+            >
+              <Plus size={24} strokeWidth={3} />
+            </motion.div>
+            <span>Creating...</span>
+          </>
+        ) : (
+          <>
+            <Send size={22} strokeWidth={2.5} />
+            <span>Create Question</span>
+          </>
+        )}
+      </motion.button>
     </motion.form>
   );
 };

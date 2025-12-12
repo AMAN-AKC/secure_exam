@@ -13,7 +13,9 @@ const questionBankSchema = new mongoose.Schema({
   category: {
     type: String,
     required: [true, 'Question category is required'],
-    enum: ['math', 'science', 'english', 'history', 'geography', 'reasoning', 'technology', 'general'],
+    trim: true,
+    minlength: [3, 'Category must be at least 3 characters'],
+    maxlength: [50, 'Category cannot exceed 50 characters'],
     index: true
   },
 

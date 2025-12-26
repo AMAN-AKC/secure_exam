@@ -107,7 +107,11 @@ export const finalizeExam = async (req, res) => {
 
     exam.chunks = chunks;
     exam.status = 'pending'; // Send to admin for approval
+    exam.isFinalized = true;
+    exam.finalizedAt = new Date();
     await exam.save();
+
+    console.log(`✅ FINALIZE SUCCESS: Exam ${examId} status set to PENDING for admin approval`);
 
     // Log audit event
     await logAuditEvent(
@@ -123,6 +127,7 @@ export const finalizeExam = async (req, res) => {
 
     res.json({ examId: exam._id, chunks: chunks.map(c => ({ index: c.index, hash: c.hash, prevHash: c.prevHash })) });
   } catch (e) {
+    console.error('❌ FINALIZE FAILED:', e);
     res.status(500).json({ error: 'Failed to finalize exam' });
   }
 };

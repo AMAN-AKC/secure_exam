@@ -12,6 +12,7 @@ const AuditLogSchema = new mongoose.Schema(
         'exam_approved',
         'exam_rejected',
         'exam_finalized',
+        'exam_preview_completed',
         'exam_published',
         'result_viewed',
         'result_submitted',
@@ -29,11 +30,7 @@ const AuditLogSchema = new mongoose.Schema(
         'admin_approval_given',
         'admin_rejection_given',
         'security_alert',
-        'bulk_student_import',
-        'question_bank_created',
-        'question_bank_modified',
-        'question_bank_deleted',
-        'question_bank_approved'
+        'bulk_student_import'
       ],
       required: true
     },

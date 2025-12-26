@@ -33,8 +33,7 @@ const questionBankSchema = new mongoose.Schema({
 
   content: {
     type: String,
-    required: [true, 'Question content is required'],
-    minlength: [10, 'Content must be at least 10 characters']
+    required: [true, 'Question content is required']
   },
 
   // Option format: { text: string, isCorrect: boolean, explanation: string }

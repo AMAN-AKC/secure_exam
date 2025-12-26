@@ -170,6 +170,9 @@ router.get('/pending-exams', async (req, res) => {
       .sort({ createdAt: -1 }); // Most recent first
     
     console.log(`📊 Found ${pendingExams.length} pending exams`);
+    pendingExams.forEach((exam, idx) => {
+      console.log(`  [${idx + 1}] ${exam.title} - availableFrom: ${exam.availableFrom}, createdAt: ${exam.createdAt}`);
+    });
     
     // Check for expired exams (registration period has passed)
     const examsWithStatus = pendingExams.map(exam => {
@@ -191,10 +194,43 @@ router.get('/pending-exams', async (req, res) => {
       };
     });
     
+    console.log(`✅ Returning ${examsWithStatus.length} exams`);
     res.json(examsWithStatus);
   } catch (error) {
     console.error('❌ Error fetching pending exams:', error);
     res.status(500).json({ error: 'Failed to fetch pending exams', details: error.message });
+  }
+});
+
+// Debug endpoint: Show full details of pending exams
+router.get('/pending-exams-detail', async (req, res) => {
+  try {
+    const pendingExams = await Exam.find({ status: 'pending' })
+      .populate('createdBy', 'name email role');
+    
+    const details = pendingExams.map(exam => ({
+      _id: exam._id,
+      title: exam.title,
+      status: exam.status,
+      createdAt: exam.createdAt,
+      updatedAt: exam.updatedAt,
+      availableFrom: exam.availableFrom,
+      availableTo: exam.availableTo,
+      examStartTime: exam.examStartTime,
+      examEndTime: exam.examEndTime,
+      isPreviewComplete: exam.isPreviewComplete,
+      isFinalized: exam.isFinalized,
+      createdBy: exam.createdBy,
+      questionsCount: exam.questions?.length || 0,
+      chunksCount: exam.chunks?.length || 0
+    }));
+    
+    res.json({
+      count: pendingExams.length,
+      exams: details
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 

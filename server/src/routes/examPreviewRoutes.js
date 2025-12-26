@@ -6,8 +6,7 @@ import {
   completePreview,
   finalizeExam,
   updateQuestionMarking,
-  getExamMarkingStats,
-  importFromQuestionBank
+  getExamMarkingStats
 } from '../middlewares/questionPreview.js';
 
 const router = express.Router();
@@ -25,8 +24,5 @@ router.post('/:examId/finalize', finalizeExam); // Finalize exam
 // Marking system
 router.patch('/:examId/questions/:questionIndex/marking', updateQuestionMarking); // Update question points
 router.get('/:examId/marking-stats', getExamMarkingStats); // Get marking summary
-
-// Import from question bank
-router.post('/:examId/import-questions', importFromQuestionBank); // Import from question bank
 
 export default router;

@@ -8,7 +8,6 @@ import {
   LogOut,
   Plus,
   TrendingUp,
-  BookOpen,
   Award,
   Clock,
   Users
@@ -17,7 +16,6 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../api.js';
 import QuestionSetupMethodModal from '../components/QuestionSetupMethodModal.jsx';
-import QuestionBankSelectionPanel from '../components/QuestionBankSelectionPanel.jsx';
 import './TeacherDashboard.css';
 
 export default function TeacherDashboard() {
@@ -58,10 +56,6 @@ export default function TeacherDashboard() {
   
   // New states for question setup method
   const [showMethodModal, setShowMethodModal] = useState(false);
-  const [questionSetupMethod, setQuestionSetupMethod] = useState(null); // 'own' | 'bank'
-  const [showQBSelectionPanel, setShowQBSelectionPanel] = useState(false);
-  const [manuallyCreatedQuestions, setManuallyCreatedQuestions] = useState([]);
-  const [selectedQuestionsFromBank, setSelectedQuestionsFromBank] = useState([]);
   
   const [examSettings, setExamSettings] = useState({
     title: '',
@@ -312,55 +306,11 @@ export default function TeacherDashboard() {
 
   // Handle method selection from modal
   const handleMethodSelect = (method) => {
-    setQuestionSetupMethod(method);
     setShowMethodModal(false);
-
-    if (method === 'bank') {
-      // Show QB selection panel
-      setShowQBSelectionPanel(true);
-    } else if (method === 'own') {
+    if (method === 'own') {
       // Show manual question form
       setShowQuestionModal(true);
     }
-  };
-
-  // Handle QB selection
-  const handleQBSelection = async (selectedQuestions) => {
-    try {
-      setSelectedQuestionsFromBank(selectedQuestions);
-      
-      // Add each QB question to the exam
-      let updatedExam = exam;
-      for (const question of selectedQuestions) {
-        const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
-          questionBankId: question._id, // Send the question bank ID instead of full question data
-          text: question.title,
-          options: question.options,
-          correctIndex: question.options.findIndex(opt => opt.isCorrect)
-        });
-        updatedExam = data;
-      }
-      
-      setExam(updatedExam);
-      setShowQBSelectionPanel(false);
-
-      if (questionSetupMethod === 'bank') {
-        // In "bank" mode, directly finalize after QB selection
-        await finalize();
-      } else if (questionSetupMethod === 'own') {
-        // In "own" mode, show manual form to add custom questions first
-        setShowQuestionModal(true);
-      }
-    } catch (error) {
-      console.error('Error adding QB questions:', error);
-      alert('Failed to add questions from Question Bank');
-    }
-  };
-
-  // Handle "Add from QB" button in manual question form
-  const handleAddFromQB = () => {
-    setShowQuestionModal(false);
-    setShowQBSelectionPanel(true);
   };
 
   const finalize = async () => {
@@ -373,6 +323,12 @@ export default function TeacherDashboard() {
       return;
     }
     try {
+      // Step 1: Complete preview if not already done
+      if (!exam.isPreviewComplete) {
+        await api.post(`/exam-preview/${exam._id}/preview/complete`);
+      }
+      
+      // Step 2: Finalize the exam
       await api.post(`/teacher/exams/${exam._id}/finalize`);
       setExam(null);
       setShowQuestionModal(false);
@@ -452,7 +408,6 @@ export default function TeacherDashboard() {
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'exams', label: 'Exams', icon: FileText },
-    { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'history', label: 'History', icon: Clock },
   ];
@@ -491,7 +446,6 @@ export default function TeacherDashboard() {
                   setActiveNav(item.id);
                   if (item.id === 'dashboard') navigate('/teacher');
                   if (item.id === 'exams') navigate('/teacher/exams');
-                  if (item.id === 'question-bank') navigate('/teacher/question-bank');
                   if (item.id === 'analytics') navigate('/teacher/analytics');
                   if (item.id === 'history') navigate('/teacher/history');
                 }}
@@ -1210,21 +1164,6 @@ export default function TeacherDashboard() {
         />
       )}
 
-      {/* Question Bank Selection Panel */}
-      {showQBSelectionPanel && (
-        <QuestionBankSelectionPanel
-          onSelect={handleQBSelection}
-          onCancel={() => {
-            setShowQBSelectionPanel(false);
-            if (questionSetupMethod === 'own') {
-              setShowQuestionModal(true);
-            } else {
-              setShowMethodModal(true);
-            }
-          }}
-          mode="standalone"
-        />
-      )}
     </div>
   );
 };

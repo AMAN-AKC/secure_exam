@@ -53,7 +53,7 @@ const AuditLogSchema = new mongoose.Schema(
     // What was acted upon
     targetType: {
       type: String,
-      enum: ['Exam', 'Result', 'User', 'Registration', 'System', 'QuestionBank'],
+      enum: ['Exam', 'Result', 'User', 'Registration', 'System'],
       required: true
     },
     targetId: {

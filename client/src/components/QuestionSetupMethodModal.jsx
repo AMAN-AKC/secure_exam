@@ -1,15 +1,13 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { PenTool, Database } from 'lucide-react';
+import { PenTool } from 'lucide-react';
 
 const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
-  const [selectedMethod, setSelectedMethod] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
   const handleContinue = () => {
-    if (!selectedMethod) return;
     setSubmitting(true);
-    onMethodSelect(selectedMethod);
+    onMethodSelect('own');
     setSubmitting(false);
   };
 
@@ -47,7 +45,7 @@ const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
           marginBottom: '0.5rem',
           color: '#1f2937'
         }}>
-          How would you like to add questions?
+          Create Your Exam Questions
         </h2>
         
         <p style={{
@@ -55,26 +53,25 @@ const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
           marginBottom: '2rem',
           fontSize: '0.95rem'
         }}>
-          Choose how you'd like to build your exam. You can mix manual + QB questions only in "Create Your Own" mode.
+          Add questions manually to build your exam with complete flexibility and customization.
         </p>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', marginBottom: '2rem' }}>
-          {/* Option 1: Create Your Own */}
+          {/* Create Your Own Option */}
           <motion.div
             whileHover={{ scale: 1.02 }}
-            onClick={() => setSelectedMethod('own')}
             style={{
-              border: selectedMethod === 'own' ? '2px solid #7c3aed' : '2px solid #e5e7eb',
+              border: '2px solid #7c3aed',
               borderRadius: '1rem',
               padding: '1.5rem',
               cursor: 'pointer',
-              background: selectedMethod === 'own' ? '#f3e8ff' : 'white',
+              background: '#f3e8ff',
               transition: 'all 0.3s ease'
             }}
           >
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
               <div style={{
-                background: selectedMethod === 'own' ? '#7c3aed' : '#e5e7eb',
+                background: '#7c3aed',
                 color: 'white',
                 width: '48px',
                 height: '48px',
@@ -103,118 +100,22 @@ const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
                   marginBottom: '0.75rem',
                   lineHeight: '1.6'
                 }}>
-                  Write questions manually for your exam.
+                  Write questions manually for your exam with full control over content and structure.
                 </p>
 
                 <div style={{
-                  background: selectedMethod === 'own' ? '#ede9fe' : '#f3f4f6',
+                  background: '#ede9fe',
                   padding: '0.75rem',
                   borderRadius: '0.5rem',
                   fontSize: '0.8125rem',
-                  color: selectedMethod === 'own' ? '#6d28d9' : '#6b7280'
+                  color: '#6d28d9'
                 }}>
-                  ✓ Can also add questions from Question Bank
-                  <br />
-                  ✓ Mix manual + QB questions
-                  <br />
                   ✓ Full flexibility & customization
-                </div>
-              </div>
-
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                border: selectedMethod === 'own' ? '2px solid #7c3aed' : '2px solid #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: selectedMethod === 'own' ? '#7c3aed' : 'white',
-                flexShrink: 0
-              }}>
-                {selectedMethod === 'own' && (
-                  <span style={{ color: 'white', fontSize: '1rem', fontWeight: 'bold' }}>✓</span>
-                )}
-              </div>
-            </div>
-          </motion.div>
-
-          {/* Option 2: Question Bank Only */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            onClick={() => setSelectedMethod('bank')}
-            style={{
-              border: selectedMethod === 'bank' ? '2px solid #10b981' : '2px solid #e5e7eb',
-              borderRadius: '1rem',
-              padding: '1.5rem',
-              cursor: 'pointer',
-              background: selectedMethod === 'bank' ? '#f0fdf4' : 'white',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-              <div style={{
-                background: selectedMethod === 'bank' ? '#10b981' : '#e5e7eb',
-                color: 'white',
-                width: '48px',
-                height: '48px',
-                borderRadius: '0.75rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                flexShrink: 0
-              }}>
-                <Database size={24} />
-              </div>
-
-              <div style={{ flex: 1 }}>
-                <h3 style={{
-                  fontSize: '1.125rem',
-                  fontWeight: '700',
-                  color: '#1f2937',
-                  marginBottom: '0.5rem'
-                }}>
-                  Select from Question Bank Only
-                </h3>
-
-                <p style={{
-                  color: '#6b7280',
-                  fontSize: '0.875rem',
-                  marginBottom: '0.75rem',
-                  lineHeight: '1.6'
-                }}>
-                  Choose from pre-built approved questions.
-                </p>
-
-                <div style={{
-                  background: selectedMethod === 'bank' ? '#ecfdf5' : '#f3f4f6',
-                  padding: '0.75rem',
-                  borderRadius: '0.5rem',
-                  fontSize: '0.8125rem',
-                  color: selectedMethod === 'bank' ? '#047857' : '#6b7280'
-                }}>
-                  ✓ Fast & quick setup
                   <br />
-                  ✓ Use pre-approved questions
+                  ✓ Add multiple-choice questions
                   <br />
-                  ✗ Cannot add manual questions
+                  ✓ Control exam structure and flow
                 </div>
-              </div>
-
-              <div style={{
-                width: '24px',
-                height: '24px',
-                borderRadius: '50%',
-                border: selectedMethod === 'bank' ? '2px solid #10b981' : '2px solid #d1d5db',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: selectedMethod === 'bank' ? '#10b981' : 'white',
-                flexShrink: 0
-              }}>
-                {selectedMethod === 'bank' && (
-                  <span style={{ color: 'white', fontSize: '1rem', fontWeight: 'bold' }}>✓</span>
-                )}
               </div>
             </div>
           </motion.div>
@@ -259,13 +160,13 @@ const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
 
           <button
             onClick={handleContinue}
-            disabled={!selectedMethod || submitting}
+            disabled={submitting}
             style={{
               padding: '0.75rem 2rem',
               border: 'none',
               borderRadius: '0.75rem',
-              cursor: !selectedMethod || submitting ? 'not-allowed' : 'pointer',
-              background: selectedMethod ? '#7c3aed' : '#d1d5db',
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              background: '#7c3aed',
               color: 'white',
               fontWeight: '600',
               fontSize: '0.9375rem',
@@ -273,14 +174,12 @@ const QuestionSetupMethodModal = ({ onMethodSelect, onCancel }) => {
               opacity: submitting ? 0.8 : 1
             }}
             onMouseEnter={(e) => {
-              if (selectedMethod && !submitting) {
+              if (!submitting) {
                 e.target.style.background = '#6d28d9';
               }
             }}
             onMouseLeave={(e) => {
-              if (selectedMethod) {
-                e.target.style.background = '#7c3aed';
-              }
+              e.target.style.background = '#7c3aed';
             }}
           >
             {submitting ? 'Loading...' : 'Continue'}

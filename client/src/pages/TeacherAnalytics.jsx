@@ -69,7 +69,6 @@ export default function TeacherAnalytics() {
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'exams', label: 'Exams', icon: FileText },
-    { id: 'question-bank', label: 'Question Bank', icon: BookOpen },
     { id: 'analytics', label: 'Analytics', icon: BarChart2 },
     { id: 'history', label: 'History', icon: Clock },
   ];
@@ -446,7 +445,6 @@ export default function TeacherAnalytics() {
                   setActiveNav(item.id);
                   if (item.id === 'dashboard') navigate('/teacher');
                   if (item.id === 'exams') navigate('/teacher/exams');
-                  if (item.id === 'question-bank') navigate('/teacher/question-bank');
                   if (item.id === 'analytics') navigate('/teacher/analytics');
                   if (item.id === 'history') navigate('/teacher/history');
                 }}

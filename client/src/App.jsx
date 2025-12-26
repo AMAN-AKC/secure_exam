@@ -8,7 +8,6 @@ import TeacherDashboard from './pages/TeacherDashboard.jsx';
 import TeacherExams from './pages/TeacherExams.jsx';
 import TeacherAnalytics from './pages/TeacherAnalytics.jsx';
 import TeacherHistory from './pages/TeacherHistory.jsx';
-import QuestionBank from './pages/QuestionBank.jsx';
 import AdminDashboard from './pages/AdminDashboard_New.jsx';
 import StudentDashboard from './pages/StudentDashboard.jsx';
 import ProtectedRoute from './components/ProtectedRoute.jsx';
@@ -28,7 +27,6 @@ export default function App() {
           <Route path="teacher/exams" element={<TeacherExams />} />
           <Route path="teacher/analytics" element={<TeacherAnalytics />} />
           <Route path="teacher/history" element={<TeacherHistory />} />
-          <Route path="teacher/question-bank" element={<QuestionBank />} />
         </Route>
         <Route element={<ProtectedRoute role="admin" />}>          
           <Route path="admin" element={<AdminDashboard />} />

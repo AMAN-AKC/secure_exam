@@ -100,19 +100,97 @@ export const login = async (req, res) => {
     }
     
     const ok = await user.verifyPassword(password);
-    
     if (!ok) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
     
+    // Generate OTP for MFA Step 2
+    const otp = generateOTP();
+    const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    // Save OTP to user
+    user.mfaOtp = otp;
+    user.mfaOtpExpiry = otpExpiry;
+    await user.save();
+    
+    // Send OTP via SMS or console in demo mode
+    if (user.demoMode || !process.env.TWILIO_ACCOUNT_SID) {
+      console.log(`📱 OTP for ${email}: ${otp} (expires in 10 minutes)`);
+    } else {
+      try {
+        const client = getTwilioClient();
+        await client.messages.create({
+          body: `Your Secure Exam OTP is: ${otp}. Valid for 10 minutes.`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: user.phone || '+1234567890'
+        });
+      } catch (twilioError) {
+        console.log(`📱 OTP (SMS failed): ${otp}`);
+      }
+    }
+    
+    // Create temporary MFA token (valid only for step 2)
+    const mfaToken = signToken({ 
+      id: user._id, 
+      email: user.email, 
+      mfaRequired: true 
+    }, '10m');
+    
+    res.json({ 
+      success: true,
+      mfaToken,
+      otpSentTo: user.phone || 'console',
+      message: 'OTP sent. Complete step 2 to login.'
+    });
+  } catch (e) {
+    console.error('Login error:', e);
+    res.status(500).json({ error: 'Login failed' });
+  }
+};
+
+// Step 2: Verify OTP and complete login
+export const verifyLoginMfa = async (req, res) => {
+  try {
+    const { mfaToken, otp } = req.body;
+    const userId = req.user?.id;
+    
+    if (!mfaToken || !otp || !userId) {
+      return res.status(400).json({ error: 'Missing required fields' });
+    }
+    
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(401).json({ error: 'User not found' });
+    }
+    
+    // Check if OTP is valid
+    if (!user.mfaOtp || user.mfaOtp !== otp.toString()) {
+      return res.status(401).json({ error: 'Invalid OTP' });
+    }
+    
+    // Check if OTP expired
+    if (new Date() > user.mfaOtpExpiry) {
+      return res.status(401).json({ error: 'OTP expired' });
+    }
+    
+    // Clear OTP
+    user.mfaOtp = null;
+    user.mfaOtpExpiry = null;
+    user.lastLoginAt = new Date();
+    await user.save();
+    
+    // Create full access token
     const token = signToken(user);
     
     res.json({ 
-      token, 
-      user: { id: user._id, name: user.name, email: user.email, role: user.role } 
+      success: true,
+      token,
+      user: { id: user._id, name: user.name, email: user.email, role: user.role },
+      message: 'Login successful'
     });
   } catch (e) {
-    res.status(500).json({ error: 'Login failed' });
+    console.error('MFA verification error:', e);
+    res.status(500).json({ error: 'Verification failed' });
   }
 };
 

@@ -16,10 +16,13 @@ export default function Login(){
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [otp, setOtp] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [authMethod, setAuthMethod] = useState('password');
   const [googleLoaded, setGoogleLoaded] = useState(false);
+  const [mfaToken, setMfaToken] = useState(null);
+  const [otpSentTo, setOtpSentTo] = useState('');
   const callbackRef = useRef(null);
 
   // Google Login Handler
@@ -146,20 +149,54 @@ export default function Login(){
   }, [authMethod, googleLoaded]);
 
   // Password Login
-  const onSubmit = async (e) => { 
+  // Step 1: Email + Password verification
+  const onSubmitStep1 = async (e) => { 
     e.preventDefault(); 
     setError('');
     setLoading(true);
     
     try {
-      const user = await login(email, password);
-      const path = user.role === 'admin' ? '/admin' : user.role === 'teacher' ? '/teacher' : '/student';
-      navigate(path, { replace: true });
+      const response = await api.post('/auth/login', { email, password });
+      console.log('Step 1 successful:', response.data);
+      setMfaToken(response.data.mfaToken);
+      setOtpSentTo(response.data.otpSentTo);
+      setError('');
     } catch (err) {
       setError(err?.response?.data?.error || 'Login failed');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Step 2: OTP verification
+  const onSubmitStep2 = async (e) => { 
+    e.preventDefault(); 
+    setError('');
+    setLoading(true);
+    
+    try {
+      const response = await api.post('/auth/login/verify-mfa', 
+        { otp },
+        { headers: { 'Authorization': `Bearer ${mfaToken}` } }
+      );
+      console.log('Step 2 successful:', response.data);
+      
+      // Set user data and navigate
+      setUserData(response.data.user, response.data.token);
+      const path = response.data.user.role === 'admin' ? '/admin' : response.data.user.role === 'teacher' ? '/teacher' : '/student';
+      navigate(path, { replace: true });
+    } catch (err) {
+      setError(err?.response?.data?.error || 'OTP verification failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Go back from step 2 to step 1
+  const handleBackToStep1 = () => {
+    setMfaToken(null);
+    setOtp('');
+    setError('');
   };
 
   return (
@@ -438,9 +475,9 @@ export default function Login(){
               </div>
             )}
             
-            {/* Password Login */}
-            {authMethod === 'password' && (
-              <form onSubmit={onSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+            {/* Password Login - Step 1: Email + Password */}
+            {authMethod === 'password' && !mfaToken && (
+              <form onSubmit={onSubmitStep1} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
                 <div>
                   <label style={{
                     display: 'block',
@@ -533,7 +570,107 @@ export default function Login(){
                   onMouseEnter={(e) => !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 25px rgba(124, 58, 237, 0.4)')}
                   onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)', e.target.style.boxShadow = '0 4px 15px rgba(124, 58, 237, 0.3)')}
                 >
-                  {loading ? '⏳ Signing In...' : '🔓 Sign In Securely'}
+                  {loading ? '⏳ Verifying...' : '🔓 Next: Verify with OTP'}
+                </button>
+              </form>
+            )}
+
+            {/* Password Login - Step 2: OTP Verification */}
+            {authMethod === 'password' && mfaToken && (
+              <form onSubmit={onSubmitStep2} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+                <div style={{
+                  padding: '1rem',
+                  background: '#d1fae5',
+                  border: '1px solid #6ee7b7',
+                  borderRadius: '0.75rem',
+                  color: '#065f46',
+                  fontSize: '0.95rem',
+                  fontWeight: '500'
+                }}>
+                  ✅ Email verified! OTP sent to {otpSentTo || 'your phone'}
+                </div>
+                
+                <div>
+                  <label style={{
+                    display: 'block',
+                    fontSize: '0.9rem',
+                    fontWeight: '600',
+                    color: '#374151',
+                    marginBottom: '0.5rem'
+                  }}>Enter 6-Digit OTP</label>
+                  <input 
+                    style={{
+                      width: '100%',
+                      padding: '1rem',
+                      fontSize: '1.5rem',
+                      letterSpacing: '0.5em',
+                      textAlign: 'center',
+                      fontFamily: 'monospace',
+                      border: '2px solid #7c3aed',
+                      borderRadius: '0.75rem',
+                      transition: 'all 0.3s ease',
+                      boxSizing: 'border-box'
+                    }}
+                    onFocus={(e) => {
+                      e.target.style.boxShadow = '0 0 0 3px rgba(124, 58, 237, 0.2)';
+                    }}
+                    onBlur={(e) => {
+                      e.target.style.boxShadow = 'none';
+                    }}
+                    type="text" 
+                    placeholder="000000"
+                    value={otp} 
+                    onChange={(e) => setOtp(e.target.value.replace(/[^0-9]/g, '').slice(0, 6))}
+                    maxLength="6"
+                    required
+                  />
+                </div>
+                
+                <button 
+                  type="submit" 
+                  disabled={loading || otp.length !== 6}
+                  style={{
+                    width: '100%',
+                    padding: '1rem',
+                    marginTop: '0.5rem',
+                    fontSize: '1.05rem',
+                    fontWeight: '700',
+                    background: otp.length === 6 
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : '#d1d5db',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.875rem',
+                    cursor: (loading || otp.length !== 6) ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s ease',
+                    boxShadow: otp.length === 6 ? '0 4px 15px rgba(16, 185, 129, 0.3)' : 'none',
+                    opacity: loading ? 0.7 : 1,
+                    letterSpacing: '0.5px'
+                  }}
+                  onMouseEnter={(e) => otp.length === 6 && !loading && (e.target.style.transform = 'translateY(-2px)', e.target.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.4)')}
+                  onMouseLeave={(e) => (e.target.style.transform = 'translateY(0)')}
+                >
+                  {loading ? '⏳ Verifying OTP...' : '🔐 Verify & Login'}
+                </button>
+
+                <button 
+                  type="button"
+                  onClick={handleBackToStep1}
+                  disabled={loading}
+                  style={{
+                    width: '100%',
+                    padding: '0.75rem',
+                    fontSize: '0.95rem',
+                    fontWeight: '600',
+                    background: 'transparent',
+                    color: '#7c3aed',
+                    border: '2px solid #7c3aed',
+                    borderRadius: '0.75rem',
+                    cursor: loading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.3s ease'
+                  }}
+                >
+                  ← Back to Login
                 </button>
               </form>
             )}

@@ -238,7 +238,7 @@ router.get('/pending-exams-detail', async (req, res) => {
 router.patch('/exam-status/:examId', async (req, res) => {
   try {
     const { examId } = req.params;
-    const { status } = req.body; // 'approved' | 'rejected' | 'expired'
+    const { status, notes, conditions } = req.body; // 'approved' | 'rejected' | 'expired'
     
     if (!['approved', 'rejected', 'expired'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
@@ -248,6 +248,7 @@ router.patch('/exam-status/:examId', async (req, res) => {
     if (!exam) return res.status(404).json({ error: 'Exam not found' });
     
     const now = new Date();
+    const oldStatus = exam.status;
     
     // Check if exam can still be approved
     if (status === 'approved' && exam.status === 'pending') {
@@ -268,10 +269,32 @@ router.patch('/exam-status/:examId', async (req, res) => {
       }
     }
     
+    // Store status change with approval/rejection details
     exam.status = status;
+    
+    if (status === 'approved') {
+      exam.approvalNotes = notes || null;
+      exam.approvalConditions = conditions || null;
+      exam.approvedBy = req.user?.id || 'debug-user'; // Use debug user if no req.user
+      exam.approvedAt = now;
+      // Clear rejection fields if changing from rejected to approved
+      exam.rejectionReason = null;
+      exam.rejectedBy = null;
+      exam.rejectedAt = null;
+    } else if (status === 'rejected') {
+      exam.rejectionReason = notes || 'No reason provided';
+      exam.rejectedBy = req.user?.id || 'debug-user'; // Use debug user if no req.user
+      exam.rejectedAt = now;
+      // Clear approval fields if changing from approved to rejected
+      exam.approvalNotes = null;
+      exam.approvalConditions = null;
+      exam.approvedBy = null;
+      exam.approvedAt = null;
+    }
+    
     await exam.save();
     
-    await exam.populate('createdBy', 'name email role');
+    await exam.populate('createdBy', 'name email role').populate('approvedBy', 'name email').populate('rejectedBy', 'name email');
     res.json(exam);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update exam status', details: error.message });

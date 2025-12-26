@@ -30,13 +30,21 @@ export default function AdminDashboard() {
     try {
       const { data } = await api.get('/debug/pending-exams');
 
-      if (data.length === 0) {
+      console.log('📊 Response from /debug/pending-exams:', data);
+      console.log('📊 Data type:', typeof data);
+      console.log('📊 Is array?', Array.isArray(data));
+      console.log('📊 Data length:', data?.length);
+
+      // Handle both array and object responses
+      const examsArray = Array.isArray(data) ? data : data?.exams || [];
+
+      if (examsArray.length === 0) {
         setOutput('✅ No pending exams to approve.');
         setLoading(false);
         return;
       }
 
-      let outputText = `📋 PENDING EXAMS (${data.length} total)\n\n`;
+      let outputText = `📋 PENDING EXAMS (${examsArray.length} total)\n\n`;
 
       // Helper function to format UTC date to IST (24-hour format)
       const formatUTCToIST = (utcDate) => {
@@ -47,7 +55,7 @@ export default function AdminDashboard() {
         return istTime.format('DD/MM/YYYY, HH:mm:ss');
       };
 
-      data.forEach((exam, index) => {
+      examsArray.forEach((exam, index) => {
         const status = exam.isExpired ? '❌ EXPIRED' : '⏳ PENDING';
         outputText += `${index + 1}. ${exam.title}\n`;
         outputText += `   Status: ${status}\n`;
@@ -74,9 +82,10 @@ export default function AdminDashboard() {
         outputText += `   Duration: ${exam.durationMinutes} minutes\n\n`;
       });
 
-      setOutput(outputText + '\n\n' + JSON.stringify(data, null, 2));
+      setOutput(outputText + '\n\n' + JSON.stringify(examsArray, null, 2));
     } catch (error) {
-      setOutput(`❌ Error: ${error.message}`);
+      console.error('❌ Error fetching pending exams:', error);
+      setOutput(`❌ Error: ${error.message}\n\nDetails: ${error.response?.data?.error || error.toString()}`);
     }
     setLoading(false);
   };

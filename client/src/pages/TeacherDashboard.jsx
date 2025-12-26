@@ -10,7 +10,8 @@ import {
   TrendingUp,
   Award,
   Clock,
-  Users
+  Users,
+  BookOpen
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -117,7 +118,7 @@ export default function TeacherDashboard() {
         const uniqueStudents = new Set();
         let totalPercentage = 0;
         let scoredResults = 0;
-        let passedResults = 0; // Count results with scpercentageore >= 60 (passing threshold)
+        let passedResults = 0; // Count results with score >= 60 (passing threshold)
         const PASS_THRESHOLD = 60;
 
         allResults.forEach(result => {
@@ -284,11 +285,7 @@ export default function TeacherDashboard() {
       return;
     }
     try {
-      // Add manual question to local state first
-      const newQuestion = { text, options, correctIndex: Number(correctIndex) };
-      setManuallyCreatedQuestions([...manuallyCreatedQuestions, newQuestion]);
-      
-      // Also add to exam via API
+      // Add question to exam via API
       const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
         text,
         options,
@@ -772,22 +769,6 @@ export default function TeacherDashboard() {
                   >
                     Go Back
                   </button>
-                  {questionSetupMethod === 'own' && (
-                    <button
-                      onClick={handleAddFromQB}
-                      style={{
-                        padding: '0.75rem 1.5rem',
-                        borderRadius: '0.5rem',
-                        cursor: 'pointer',
-                        background: '#6b21a8',
-                        color: 'white',
-                        border: 'none',
-                        fontSize: '0.875rem'
-                      }}
-                    >
-                      + Add from QB
-                    </button>
-                  )}
                   <button
                     onClick={addQuestion}
                     disabled={!text.trim() || options.some(opt => !opt.trim())}
@@ -1122,7 +1103,6 @@ export default function TeacherDashboard() {
                       setShowSettingsModal(false);
                       // Show method selection modal instead of question modal
                       setShowMethodModal(true);
-                      setQuestionSetupMethod(null);
                       alert('Exam settings saved! Now choose how to add questions.');
                     } catch (error) {
                       alert('Failed to save exam settings');
@@ -1156,10 +1136,6 @@ export default function TeacherDashboard() {
           onCancel={() => {
             setShowMethodModal(false);
             setExam(null);
-            // Reset states
-            setQuestionSetupMethod(null);
-            setManuallyCreatedQuestions([]);
-            setSelectedQuestionsFromBank([]);
           }}
         />
       )}

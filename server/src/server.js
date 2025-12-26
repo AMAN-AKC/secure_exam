@@ -14,7 +14,8 @@ app.use(cors({
   origin: [
     'http://localhost:5173',
     'http://localhost:3000',
-    'https://secure-exam-theta.vercel.app'
+    'https://secure-exam-theta.vercel.app',
+    'https://secure-exam-l4wi5kabb-amans-projects-5797b7f6.vercel.app'
   ],
   credentials: true
 }));

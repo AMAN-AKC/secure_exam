@@ -51,9 +51,8 @@ const QuestionBankSelectionPanel = ({ onSelect, onCancel, mode = 'standalone' })
       });
       const data = await response.json();
       
-      // Filter to show only approved questions
-      const approvedQuestions = (data.questions || []).filter(q => q.isApproved || q.status === 'approved');
-      setQuestions(approvedQuestions);
+      // Show all questions (approved, pending_review, etc.) - teachers can use their own questions
+      setQuestions(data.questions || []);
     } catch (error) {
       console.error('Error fetching questions:', error);
       setQuestions([]);

@@ -32,6 +32,7 @@ const QuestionBank = () => {
   const [search, setSearch] = useState('');
   const [category, setCategory] = useState('');
   const [difficulty, setDifficulty] = useState('');
+  const [status, setStatus] = useState(''); // Add status filter
   const [showForm, setShowForm] = useState(false);
   const [categories, setCategories] = useState([]);
   
@@ -39,6 +40,7 @@ const QuestionBank = () => {
   const [categoriesLoaded, setCategoriesLoaded] = useState(false);
 
   const difficulties = ['easy', 'medium', 'hard'];
+  const statuses = ['approved', 'pending_review', 'rejected'];
 
   const navigationItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -115,9 +117,10 @@ const QuestionBank = () => {
       if (search) params.append('search', search);
       if (category) params.append('category', category);
       if (difficulty) params.append('difficulty', difficulty);
+      if (status) params.append('status', status);
 
       const queryString = params.toString();
-      console.log('🔍 Fetching questions with filters:', { search, category, difficulty, queryString });
+      console.log('🔍 Fetching questions with filters:', { search, category, difficulty, status, queryString });
 
       const response = await fetch(`${API_BASE_URL}/question-bank?${queryString}`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
@@ -157,7 +160,7 @@ const QuestionBank = () => {
   // Fetch questions whenever filters change
   useEffect(() => {
     fetchQuestions();
-  }, [search, category, difficulty]);
+  }, [search, category, difficulty, status]);
 
   return (
     <div className="dashboard-container">
@@ -282,6 +285,18 @@ const QuestionBank = () => {
                     <option key={diff} value={diff}>{diff}</option>
                   ))}
                 </select>
+
+                <select 
+                  value={status} 
+                  onChange={(e) => setStatus(e.target.value)}
+                  aria-label="Filter by status"
+                  title="Filter questions by status"
+                >
+                  <option value="">All Status</option>
+                  {statuses.map(stat => (
+                    <option key={stat} value={stat}>{stat.replace('_', ' ')}</option>
+                  ))}
+                </select>
               </div>
 
               {loading ? (
@@ -350,7 +365,21 @@ const QuestionCard = ({ question, onDelete }) => {
       <motion.div className="question-card" whileHover={{ y: -5 }}>
         <div className="qc-header">
           <h3>{question.title}</h3>
-          <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+            <span className={`badge badge-${question.difficulty}`}>{question.difficulty}</span>
+            {question.status && (
+              <span style={{
+                fontSize: '0.75rem',
+                padding: '0.25rem 0.75rem',
+                borderRadius: '0.375rem',
+                fontWeight: '600',
+                background: question.status === 'approved' ? '#d1fae5' : question.status === 'pending_review' ? '#fef3c7' : '#fee2e2',
+                color: question.status === 'approved' ? '#065f46' : question.status === 'pending_review' ? '#92400e' : '#7f1d1d'
+              }}>
+                {question.status.replace('_', ' ')}
+              </span>
+            )}
+          </div>
         </div>
 
         <p className="qc-category">{question.category}</p>

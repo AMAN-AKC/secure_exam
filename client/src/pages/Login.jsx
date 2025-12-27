@@ -149,8 +149,8 @@ export default function Login(){
   }, [authMethod, googleLoaded]);
 
   // Password Login - Step 1: Verify Password
-  const onSubmitStep1 = async (e) => { 
-    e.preventDefault(); 
+  const onSubmitStep1 = async (e) => {
+    e.preventDefault();
     setError('');
     setLoading(true);
     

@@ -171,7 +171,14 @@ router.get('/pending-exams', async (req, res) => {
     
     console.log(`📊 Found ${pendingExams.length} pending exams`);
     pendingExams.forEach((exam, idx) => {
-      console.log(`  [${idx + 1}] ${exam.title} - ID: ${exam._id}, availableFrom: ${exam.availableFrom}, examStartTime: ${exam.examStartTime}`);
+      console.log(`  [${idx + 1}] "${exam.title}"`);
+      console.log(`      ID: ${exam._id}`);
+      console.log(`      Status: ${exam.status}`);
+      console.log(`      availableFrom: ${exam.availableFrom}`);
+      console.log(`      examStartTime: ${exam.examStartTime}`);
+      console.log(`      isPreviewComplete: ${exam.isPreviewComplete}`);
+      console.log(`      isFinalized: ${exam.isFinalized}`);
+      console.log(`      questions: ${exam.questions?.length || 0}`);
     });
     
     // Check for expired exams (registration period has passed)

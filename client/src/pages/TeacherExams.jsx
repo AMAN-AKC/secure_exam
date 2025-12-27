@@ -30,13 +30,13 @@ export default function TeacherExams() {
   const [loading, setLoading] = useState(true);
   const [exams, setExams] = useState([]);
   const [filteredExams, setFilteredExams] = useState([]);
-
+  
   // Search and Filter states
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('created');
   const [selectedExams, setSelectedExams] = useState(new Set());
-
+  
   // Modal states
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -108,7 +108,7 @@ export default function TeacherExams() {
   // Handle bulk delete
   const handleBulkDelete = async () => {
     if (selectedExams.size === 0) return;
-
+    
     if (!window.confirm(`Delete ${selectedExams.size} exam(s)? This cannot be undone.`)) {
       return;
     }
@@ -139,7 +139,7 @@ export default function TeacherExams() {
       // Fetch full exam details with questions
       const { data: fullExam } = await api.get(`/teacher/exams`);
       const examToEdit = fullExam.find(e => e._id === exam.id);
-
+      
       if (!examToEdit) {
         alert('Exam not found');
         return;
@@ -148,7 +148,7 @@ export default function TeacherExams() {
       // Store exam in sessionStorage for TeacherDashboard to retrieve
       sessionStorage.setItem('editExam', JSON.stringify(examToEdit));
       sessionStorage.setItem('showQuestionModal', 'true');
-
+      
       // Navigate to dashboard
       navigate('/teacher/dashboard');
     } catch (error) {
@@ -178,7 +178,7 @@ export default function TeacherExams() {
   const handleExportCSV = async (exam) => {
     try {
       const { data } = await api.get(`/teacher/exams/${exam.id}/results`);
-
+      
       if (!data || data.length === 0) {
         alert('No results to export');
         return;
@@ -196,7 +196,7 @@ export default function TeacherExams() {
       ]);
 
       const csv = [headers, ...rows].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-
+      
       // Download
       const blob = new Blob([csv], { type: 'text/csv' });
       const url = window.URL.createObjectURL(blob);
@@ -579,7 +579,7 @@ export default function TeacherExams() {
             overflowY: 'auto'
           }}>
             <h2 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '1rem' }}>{selectedExam.title}</h2>
-
+            
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '2rem' }}>
               <div>
                 <p style={{ color: '#6b7280', fontSize: '0.875rem', marginBottom: '0.25rem' }}>Status</p>

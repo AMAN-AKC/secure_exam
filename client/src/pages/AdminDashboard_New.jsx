@@ -1,10 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import dayjs from 'dayjs';
-import utc from 'dayjs/plugin/utc';
 import api from '../api.js';
 import { useAuth } from '../context/AuthContext.jsx';
-
-dayjs.extend(utc);
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -30,32 +26,30 @@ export default function AdminDashboard() {
     try {
       const { data } = await api.get('/debug/pending-exams');
 
-      console.log('📊 Response from /debug/pending-exams:', data);
-      console.log('📊 Data type:', typeof data);
-      console.log('📊 Is array?', Array.isArray(data));
-      console.log('📊 Data length:', data?.length);
-
-      // Handle both array and object responses
-      const examsArray = Array.isArray(data) ? data : data?.exams || [];
-
-      if (examsArray.length === 0) {
+      if (data.length === 0) {
         setOutput('✅ No pending exams to approve.');
         setLoading(false);
         return;
       }
 
-      let outputText = `📋 PENDING EXAMS (${examsArray.length} total)\n\n`;
+      let outputText = `📋 PENDING EXAMS (${data.length} total)\n\n`;
 
       // Helper function to format UTC date to IST (24-hour format)
       const formatUTCToIST = (utcDate) => {
         if (!utcDate) return 'N/A';
-        // Use dayjs with UTC mode, then add 5:30 hours for IST
-        const dayjsUtc = dayjs.utc(utcDate);
-        const istTime = dayjsUtc.add(5, 'hour').add(30, 'minute');
-        return istTime.format('DD/MM/YYYY, HH:mm:ss');
+        const date = new Date(utcDate);
+        const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+        // Use getUTC* methods because istDate is still in UTC, we just adjusted the timestamp
+        const day = String(istDate.getUTCDate()).padStart(2, '0');
+        const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+        const year = istDate.getUTCFullYear();
+        const hours = String(istDate.getUTCHours()).padStart(2, '0');
+        const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+        const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+        return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
       };
 
-      examsArray.forEach((exam, index) => {
+      data.forEach((exam, index) => {
         const status = exam.isExpired ? '❌ EXPIRED' : '⏳ PENDING';
         outputText += `${index + 1}. ${exam.title}\n`;
         outputText += `   Status: ${status}\n`;
@@ -82,10 +76,9 @@ export default function AdminDashboard() {
         outputText += `   Duration: ${exam.durationMinutes} minutes\n\n`;
       });
 
-      setOutput(outputText + '\n\n' + JSON.stringify(examsArray, null, 2));
+      setOutput(outputText + '\n\n' + JSON.stringify(data, null, 2));
     } catch (error) {
-      console.error('❌ Error fetching pending exams:', error);
-      setOutput(`❌ Error: ${error.message}\n\nDetails: ${error.response?.data?.error || error.toString()}`);
+      setOutput(`❌ Error: ${error.message}`);
     }
     setLoading(false);
   };

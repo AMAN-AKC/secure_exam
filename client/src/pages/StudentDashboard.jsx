@@ -41,6 +41,21 @@ export default function StudentDashboard(){
     return approved.filter(exam => !registeredExamIds.has(exam.id || exam._id));
   }, [approved, regs]);
 
+  // Centralized helper function to format UTC date to IST (24-hour format)
+  const formatUTCToIST = (utcDate) => {
+    if (!utcDate) return 'N/A';
+    const date = new Date(utcDate);
+    const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+    // Use getUTC* methods because istDate is still in UTC, we just adjusted the timestamp
+    const day = String(istDate.getUTCDate()).padStart(2, '0');
+    const month = String(istDate.getUTCMonth() + 1).padStart(2, '0');
+    const year = istDate.getUTCFullYear();
+    const hours = String(istDate.getUTCHours()).padStart(2, '0');
+    const minutes = String(istDate.getUTCMinutes()).padStart(2, '0');
+    const seconds = String(istDate.getUTCSeconds()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+  };
+
   const load = async () => {
     try {
       setLoading(true);
@@ -85,19 +100,10 @@ export default function StudentDashboard(){
       
       const message = data.message || 'Registration successful. Check your schedule.';
       if (data.startTime && data.endTime) {
-        // Convert UTC to IST (UTC+5:30)
-        const formatTime = (date) => {
-          const d = new Date(date);
-          const day = String(d.getDate()).padStart(2, '0');
-          const month = String(d.getMonth() + 1).padStart(2, '0');
-          const year = d.getFullYear();
-          const hours = String(d.getHours()).padStart(2, '0');
-          const minutes = String(d.getMinutes()).padStart(2, '0');
-          return `${day}/${month}/${year} at ${hours}:${minutes}`;
-        };
-        const startTime = formatTime(data.startTime);
+        const startTime = formatUTCToIST(data.startTime);
         const endTimeObj = new Date(data.endTime);
-        const endTime = String(endTimeObj.getHours()).padStart(2, '0') + ':' + String(endTimeObj.getMinutes()).padStart(2, '0');
+        const endTimeIST = new Date(endTimeObj.getTime() + (5.5 * 60 * 60 * 1000));
+        const endTime = String(endTimeIST.getUTCHours()).padStart(2, '0') + ':' + String(endTimeIST.getUTCMinutes()).padStart(2, '0');
         alert(`Registration successful!\n\n${message}\n\nScheduled: ${startTime} - ${endTime}`);
       } else {
         alert(message);
@@ -676,18 +682,6 @@ export default function StudentDashboard(){
                   if (!exam || (!exam.id && !exam._id)) return null;
                   const examId = exam.id || exam._id;
                   
-                  // Helper function to format date (24-hour format)
-                  const formatTime = (date) => {
-                    if (!date) return 'N/A';
-                    const d = new Date(date);
-                    const day = String(d.getDate()).padStart(2, '0');
-                    const month = String(d.getMonth() + 1).padStart(2, '0');
-                    const year = d.getFullYear();
-                    const hours = String(d.getHours()).padStart(2, '0');
-                    const minutes = String(d.getMinutes()).padStart(2, '0');
-                    return `${day}/${month}/${year} ${hours}:${minutes}`;
-                  };
-                  
                   return (
                     <div style={{
                       background: '#f9fafb',
@@ -730,7 +724,7 @@ export default function StudentDashboard(){
                             <span>⏱️ {exam.durationMinutes}min Duration</span>
                             <span>👨‍🏫 By {exam.createdBy?.name || 'Teacher'}</span>
                             {exam.availableFrom && (
-                              <span>📅 Reg: {formatTime(exam.availableFrom)}</span>
+                              <span>📅 Reg: {formatUTCToIST(exam.availableFrom)}</span>
                             )}
                           </div>
                         </div>
@@ -811,17 +805,6 @@ export default function StudentDashboard(){
                     const isUpcoming = startTime > now;
                     const isActive = now >= startTime && now <= endTime;
                     
-                    // Helper function to format date (24-hour format)
-                    const formatTime = (date) => {
-                      const d = new Date(date);
-                      const day = String(d.getDate()).padStart(2, '0');
-                      const month = String(d.getMonth() + 1).padStart(2, '0');
-                      const year = d.getFullYear();
-                      const hours = String(d.getHours()).padStart(2, '0');
-                      const minutes = String(d.getMinutes()).padStart(2, '0');
-                      return `${day}/${month}/${year} ${hours}:${minutes}`;
-                    };
-                    
                     return (
                       <div key={reg._id} style={{
                         background: isActive ? 'rgba(16, 185, 129, 0.05)' : isUpcoming ? 'rgba(245, 158, 11, 0.05)' : '#f3f4f6',
@@ -847,8 +830,8 @@ export default function StudentDashboard(){
                             fontSize: '0.9rem',
                             color: '#6b7280'
                           }}>
-                            <span>📅 {formatTime(startTime)}</span>
-                            <span>⏱️ {formatTime(startTime).split(' ')[1]} - {formatTime(endTime).split(' ')[1]}</span>
+                            <span>📅 {formatUTCToIST(startTime)}</span>
+                            <span>⏱️ {formatUTCToIST(startTime).split(' ')[1]} - {formatUTCToIST(endTime).split(' ')[1]}</span>
                             <span style={{
                               background: isActive ? '#10b981' : isUpcoming ? '#f59e0b' : '#9ca3af',
                               color: 'white',
@@ -960,7 +943,7 @@ export default function StudentDashboard(){
                             flexWrap: 'wrap',
                             marginBottom: '0.75rem'
                           }}>
-                            <span>📅 Submitted: {new Date(result.submittedAt).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: '2-digit' })}, {new Date(result.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</span>
+                            <span>📅 Submitted: {formatUTCToIST(result.submittedAt)}</span>
                           </div>
                           <div style={{
                             padding: '0.75rem 1rem',
@@ -973,20 +956,7 @@ export default function StudentDashboard(){
                             overflowWrap: 'break-word',
                             maxWidth: '50%'
                           }}>
-                            {(() => {
-                              const formatTime = (date) => {
-                                if (!date) return 'N/A';
-                                const d = new Date(date);
-                                const day = String(d.getDate()).padStart(2, '0');
-                                const month = String(d.getMonth() + 1).padStart(2, '0');
-                                const year = d.getFullYear();
-                                const hours = String(d.getHours()).padStart(2, '0');
-                                const minutes = String(d.getMinutes()).padStart(2, '0');
-                                const seconds = String(d.getSeconds()).padStart(2, '0');
-                                return `${day}/${month}/${year}, ${hours}:${minutes}:${seconds}`;
-                              };
-                              return `⏳ Results will be available on ${result.hideReason ? formatTime(result.hideReason) : 'N/A'}`;
-                            })()}
+                            ⏳ Results will be available on {result.hideReason ? formatUTCToIST(result.hideReason) : 'N/A'}
                           </div>
                         </div>
                         <div style={{
@@ -1040,7 +1010,7 @@ export default function StudentDashboard(){
                           color: '#6b7280',
                           flexWrap: 'wrap'
                         }}>
-                          <span>📅 {new Date(result.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
+                          <span>📅 {formatUTCToIST(result.submittedAt)}</span>
                           {result.timeTaken && (
                             <span>⏱️ {Math.floor(result.timeTaken / 60)}m {result.timeTaken % 60}s</span>
                           )}
@@ -1129,7 +1099,7 @@ export default function StudentDashboard(){
                 <div>
                   <h3 style={{ fontWeight: '600', fontSize: '1.1rem', margin: '0 0 0.5rem' }}>{showDetailedResult.exam?.title}</h3>
                   <div style={{ fontSize: '0.9rem', color: '#6b7280', display: 'grid', gap: '0.25rem' }}>
-                    <div>📅 Submitted: {new Date(showDetailedResult.submittedAt).toLocaleString('en-IN', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' })}</div>
+                    <div>📅 Submitted: {formatUTCToIST(showDetailedResult.submittedAt)}</div>
                     {showDetailedResult.timeTaken && (
                       <div>⏱️ Time Taken: {Math.floor(showDetailedResult.timeTaken / 60)}m {showDetailedResult.timeTaken % 60}s</div>
                     )}

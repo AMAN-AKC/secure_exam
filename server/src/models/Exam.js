@@ -5,23 +5,6 @@ const QuestionSchema = new mongoose.Schema(
     text: { type: String, required: true },
     options: { type: [String], validate: v => v.length === 4, required: true },
     correctIndex: { type: Number, min: 0, max: 3, required: true },
-    
-    // ===== MARKING SYSTEM FIELDS =====
-    points: { 
-      type: Number, 
-      default: 1, 
-      min: [0.25, 'Points must be at least 0.25'],
-      max: [100, 'Points cannot exceed 100']
-    }, // Points for correct answer
-    negativeMark: { 
-      type: Number, 
-      default: 0, 
-      min: [0, 'Negative mark cannot be negative'] 
-    }, // Penalty for wrong answer
-    partialCredit: { 
-      type: Boolean, 
-      default: false 
-    }, // Allow partial marks for this question
   },
   { _id: false }
 );
@@ -64,42 +47,6 @@ const ExamSchema = new mongoose.Schema(
     },
     resultsReleaseDate: { type: Date }, // Custom date/time when results become visible
     resultsReleaseMessage: { type: String, default: '' }, // Optional message to show with results
-    
-    // ===== APPROVAL TRACKING =====
-    approvalNotes: { type: String, default: null }, // Admin's reason for approval/rejection
-    approvalConditions: { type: String, default: null }, // Any conditions on approval
-    approvedBy: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'User', 
-      default: null 
-    }, // Which admin approved
-    approvedAt: { type: Date, default: null }, // When approved
-    rejectionReason: { type: String, default: null }, // Reason if rejected
-    rejectedBy: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'User', 
-      default: null 
-    }, // Which admin rejected
-    rejectedAt: { type: Date, default: null }, // When rejected
-    
-    // ===== QUESTION PREVIEW & FINALIZATION =====
-    isPreviewComplete: { 
-      type: Boolean, 
-      default: false,
-      description: 'Teacher has reviewed all questions before finalizing'
-    },
-    previewedBy: { 
-      type: mongoose.Schema.Types.ObjectId, 
-      ref: 'User',
-      default: null
-    },
-    previewedAt: { type: Date, default: null },
-    isFinalized: { 
-      type: Boolean, 
-      default: false,
-      description: 'Exam is locked and cannot be modified'
-    },
-    finalizedAt: { type: Date, default: null },
     
     questions: { type: [QuestionSchema], default: [] },
     chunks: { type: [ChunkSchema], default: [] },

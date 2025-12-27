@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { useNavigate } from 'react-router-dom';
-import {
-  LayoutDashboard,
-  FileText,
-  BarChart2,
-  LogOut,
+import { 
+  LayoutDashboard, 
+  FileText, 
+  BarChart2, 
+  LogOut, 
   Plus,
   TrendingUp,
+  BookOpen,
   Award,
   Clock,
-  Users,
-  BookOpen
+  Users
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAuth } from '../context/AuthContext.jsx';
 import api from '../api.js';
-import QuestionSetupMethodModal from '../components/QuestionSetupMethodModal.jsx';
 import './TeacherDashboard.css';
 
 export default function TeacherDashboard() {
@@ -48,16 +47,12 @@ export default function TeacherDashboard() {
   const [title, setTitle] = useState('');
   const [exam, setExam] = useState(null);
   const [text, setText] = useState('');
-  const [options, setOptions] = useState(['', '', '', '']);
+  const [options, setOptions] = useState(['','','','']);
   const [correctIndex, setCorrectIndex] = useState(0);
   const [submitting, setSubmitting] = useState(false);
   const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [showAllExams, setShowAllExams] = useState(false);
-  
-  // New states for question setup method
-  const [showMethodModal, setShowMethodModal] = useState(false);
-  
   const [examSettings, setExamSettings] = useState({
     title: '',
     description: '',
@@ -81,24 +76,24 @@ export default function TeacherDashboard() {
         setLoading(true);
         const examsRes = await api.get('/teacher/exams');
         const examsData = examsRes.data || [];
-
+        
         // Fetch results for all exams in parallel
         const resultPromises = examsData.map(exam =>
           api.get(`/teacher/exams/${exam._id}/results`)
             .then(res => res.data)
             .catch(() => [])
         );
-
+        
         const resultsArrays = await Promise.all(resultPromises);
         const allResults = resultsArrays.flat().filter(r => r);
-
+        
         // Create a map of exam IDs to their result counts for formatted exams
         const resultCountByExamId = {};
         allResults.forEach(result => {
           const examId = result.exam?._id || result.exam || result.examId;
           resultCountByExamId[examId] = (resultCountByExamId[examId] || 0) + 1;
         });
-
+        
         // Format exams for display
         const formattedExams = examsData.map(exam => ({
           id: exam._id,
@@ -109,46 +104,35 @@ export default function TeacherDashboard() {
           duration: `${exam.durationMinutes || 60} mins`,
           status: getExamStatus(exam.examStartTime, exam.examEndTime)
         }));
-
+        
         // Show only first 3 or all based on showAllExams flag
         setExams(formattedExams.slice(0, showAllExams ? formattedExams.length : 3));
 
         // Calculate stats from results - ALL DYNAMIC DATA
         const totalExams = examsData.length;
         const uniqueStudents = new Set();
-        let totalPercentage = 0;
+        let totalScores = 0;
         let scoredResults = 0;
         let passedResults = 0; // Count results with score >= 60 (passing threshold)
         const PASS_THRESHOLD = 60;
 
         allResults.forEach(result => {
           uniqueStudents.add(result.studentId?._id || result.student?._id || result.student);
-
-          let percentage = 0;
-          // Calculate percentage based on result data availability
-          if (result.percentage !== undefined) {
-            percentage = result.percentage;
-          } else if (result.score !== undefined && result.total) {
-            percentage = (result.score / result.total) * 100;
-          } else if (result.score !== undefined) {
-            percentage = result.score; // Fallback to raw score if total missing (should be rare)
-          }
-
           if (result.score !== undefined && result.score !== null) {
-            totalPercentage += percentage;
+            totalScores += result.score;
             scoredResults++;
-            if (percentage >= PASS_THRESHOLD) {
+            if (result.score >= PASS_THRESHOLD) {
               passedResults++;
             }
           }
         });
 
-        const avgScore = scoredResults > 0 ? Math.round(totalPercentage / scoredResults) : 0;
+        const avgScore = scoredResults > 0 ? Math.round(totalScores / scoredResults) : 0;
         const passRate = scoredResults > 0 ? Math.round((passedResults / scoredResults) * 100) : 0;
 
         // Count active exams
         const activeExams = examsData.filter(exam => getExamStatus(exam.examStartTime, exam.examEndTime) === 'active').length;
-
+        
         // Count exams with submissions
         const examsWithSubmissions = Object.keys(resultCountByExamId).length;
 
@@ -184,31 +168,44 @@ export default function TeacherDashboard() {
   useEffect(() => {
     const editExamData = sessionStorage.getItem('editExam');
     const shouldShowQuestionModal = sessionStorage.getItem('showQuestionModal');
-
+    
     if (editExamData && shouldShowQuestionModal) {
       try {
         const examToEdit = JSON.parse(editExamData);
         setExam(examToEdit);
-
+        
+        // Helper to convert UTC timestamp to IST for datetime-local input
+        const convertUTCToISTDatetimeLocal = (utcDate) => {
+          if (!utcDate) return '';
+          const date = new Date(utcDate);
+          const istDate = new Date(date.getTime() + (5.5 * 60 * 60 * 1000));
+          const year = istDate.getFullYear();
+          const month = String(istDate.getMonth() + 1).padStart(2, '0');
+          const day = String(istDate.getDate()).padStart(2, '0');
+          const hours = String(istDate.getHours()).padStart(2, '0');
+          const minutes = String(istDate.getMinutes()).padStart(2, '0');
+          return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+        
         // Populate exam settings from the draft exam
         setExamSettings({
           title: examToEdit.title || '',
           description: examToEdit.description || '',
           durationMinutes: examToEdit.durationMinutes || 60,
-          availableFrom: examToEdit.availableFrom ? new Date(examToEdit.availableFrom).toISOString().slice(0, 16) : '',
-          availableTo: examToEdit.availableTo ? new Date(examToEdit.availableTo).toISOString().slice(0, 16) : '',
-          examStartTime: examToEdit.examStartTime ? new Date(examToEdit.examStartTime).toISOString().slice(0, 16) : '',
-          examEndTime: examToEdit.examEndTime ? new Date(examToEdit.examEndTime).toISOString().slice(0, 16) : '',
+          availableFrom: convertUTCToISTDatetimeLocal(examToEdit.availableFrom),
+          availableTo: convertUTCToISTDatetimeLocal(examToEdit.availableTo),
+          examStartTime: convertUTCToISTDatetimeLocal(examToEdit.examStartTime),
+          examEndTime: convertUTCToISTDatetimeLocal(examToEdit.examEndTime),
           allowLateEntry: examToEdit.allowLateEntry || false,
           shuffleQuestions: examToEdit.shuffleQuestions || false,
           showResults: examToEdit.showResults !== false,
           resultsReleaseType: examToEdit.resultsReleaseType || 'after_exam_ends',
-          resultsReleaseDate: examToEdit.resultsReleaseDate ? new Date(examToEdit.resultsReleaseDate).toISOString().slice(0, 16) : '',
+          resultsReleaseDate: convertUTCToISTDatetimeLocal(examToEdit.resultsReleaseDate),
           resultsReleaseMessage: examToEdit.resultsReleaseMessage || ''
         });
-
+        
         setShowQuestionModal(true);
-
+        
         // Clean up sessionStorage
         sessionStorage.removeItem('editExam');
         sessionStorage.removeItem('showQuestionModal');
@@ -226,7 +223,7 @@ export default function TeacherDashboard() {
 
     // If we have start time and duration, calculate end time
     if (newSettings.examStartTime && newSettings.durationMinutes &&
-      (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
+        (!newSettings.examEndTime || updates.examStartTime || updates.durationMinutes)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = startTime.add(newSettings.durationMinutes, 'minute');
       newSettings.examEndTime = endTime.format('YYYY-MM-DDTHH:mm');
@@ -234,7 +231,7 @@ export default function TeacherDashboard() {
 
     // If we have end time and duration, calculate start time
     else if (newSettings.examEndTime && newSettings.durationMinutes &&
-      (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
+             (!newSettings.examStartTime || updates.examEndTime || updates.durationMinutes)) {
       const endTime = dayjs(newSettings.examEndTime);
       const startTime = endTime.subtract(newSettings.durationMinutes, 'minute');
       newSettings.examStartTime = startTime.format('YYYY-MM-DDTHH:mm');
@@ -242,7 +239,7 @@ export default function TeacherDashboard() {
 
     // If we have start time and end time, calculate duration
     else if (newSettings.examStartTime && newSettings.examEndTime &&
-      (updates.examStartTime || updates.examEndTime)) {
+             (updates.examStartTime || updates.examEndTime)) {
       const startTime = dayjs(newSettings.examStartTime);
       const endTime = dayjs(newSettings.examEndTime);
       const durationMinutes = endTime.diff(startTime, 'minute');
@@ -285,7 +282,6 @@ export default function TeacherDashboard() {
       return;
     }
     try {
-      // Add question to exam via API
       const { data } = await api.post(`/teacher/exams/${exam._id}/questions`, {
         text,
         options,
@@ -293,20 +289,11 @@ export default function TeacherDashboard() {
       });
       setExam(data);
       setText('');
-      setOptions(['', '', '', '']);
+      setOptions(['','','','']);
       setCorrectIndex(0);
       alert('Question added successfully!');
     } catch (error) {
       alert('Failed to add question');
-    }
-  };
-
-  // Handle method selection from modal
-  const handleMethodSelect = (method) => {
-    setShowMethodModal(false);
-    if (method === 'own') {
-      // Show manual question form
-      setShowQuestionModal(true);
     }
   };
 
@@ -320,12 +307,6 @@ export default function TeacherDashboard() {
       return;
     }
     try {
-      // Step 1: Complete preview if not already done
-      if (!exam.isPreviewComplete) {
-        await api.post(`/exam-preview/${exam._id}/preview/complete`);
-      }
-      
-      // Step 2: Finalize the exam
       await api.post(`/teacher/exams/${exam._id}/finalize`);
       setExam(null);
       setShowQuestionModal(false);
@@ -382,15 +363,10 @@ export default function TeacherDashboard() {
 
       // Find which day of the current week this result belongs to
       const dayDiff = Math.floor((resultDate - weekStart) / 86400000);
-
+      
       if (dayDiff >= 0 && dayDiff < 5) {
         if (result.score !== undefined && result.score !== null) {
-          let percentage = 0;
-          if (result.percentage !== undefined) percentage = result.percentage;
-          else if (result.total) percentage = (result.score / result.total) * 100;
-          else percentage = result.score;
-
-          scores[dayDiff].score += percentage;
+          scores[dayDiff].score += result.score;
           scores[dayDiff].count += 1;
         }
       }
@@ -415,10 +391,17 @@ export default function TeacherDashboard() {
       <aside className="dashboard-sidebar">
         <div className="sidebar-header">
           <div className="sidebar-logo">
-            <div className="logo-icon-wrapper">
+            <div style={{
+              background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+              padding: '0.75rem',
+              borderRadius: '0.75rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
               <BookOpen size={24} color="white" />
             </div>
-            <span className="logo-text">SecureExam</span>
+            <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1a103c' }}>SecureExam</span>
           </div>
           {user && (
             <div style={{
@@ -473,133 +456,148 @@ export default function TeacherDashboard() {
             </div>
           ) : (
             <>
-              {/* Stats Grid */}
-              <div className="stats-grid">
-                {stats.map((stat, idx) => {
-                  const Icon = stat.icon;
-                  return (
-                    <div key={idx} className="stat-card" style={{ borderLeftColor: stat.color }}>
-                      <div className="stat-icon" style={{ color: stat.color }}>
-                        <Icon size={24} />
-                      </div>
-                      <div className="stat-info">
-                        <p className="stat-label">{stat.label}</p>
-                        <p className="stat-value">{stat.value}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            {/* Stats Grid */}
+            <div className="stats-grid">
+            {stats.map((stat, idx) => {
+              const Icon = stat.icon;
+              return (
+                <div key={idx} className="stat-card" style={{ borderLeftColor: stat.color }}>
+                  <div className="stat-icon" style={{ color: stat.color }}>
+                    <Icon size={24} />
+                  </div>
+                  <div className="stat-info">
+                    <p className="stat-label">{stat.label}</p>
+                    <p className="stat-value">{stat.value}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
 
-              {/* Main Grid */}
-              <div className="content-grid">
-                {/* Left Column */}
-                <div className="grid-left">
-                  {/* Upcoming Exams */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h2>Upcoming Exams</h2>
-                      <button
-                        onClick={() => setShowAllExams(!showAllExams)}
-                        style={{ color: '#7c3aed', fontSize: '0.875rem', fontWeight: '600', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
-                        {showAllExams ? '← Show Less' : 'View All →'}
-                      </button>
-                    </div>
+          {/* Main Grid */}
+          <div className="content-grid">
+            {/* Left Column */}
+            <div className="grid-left">
+              {/* Upcoming Exams */}
+              <div className="card">
+                <div className="card-header">
+                  <h2>Upcoming Exams</h2>
+                  <button 
+                    onClick={() => setShowAllExams(!showAllExams)}
+                    style={{ color: '#7c3aed', fontSize: '0.875rem', fontWeight: '600', textDecoration: 'none', cursor: 'pointer', background: 'none', border: 'none', padding: 0 }}>
+                    {showAllExams ? '← Show Less' : 'View All →'}
+                  </button>
+                </div>
 
-                    <div className="exams-list">
-                      {exams.map((exam) => (
-                        <div key={exam.id} className="exam-card">
-                          <div className="exam-content">
-                            <h3>{exam.title}</h3>
-                            <p className="exam-class">{exam.class} • {exam.students} Students</p>
-                            <div className="exam-meta">
-                              <span className="exam-time">📅 {exam.date}</span>
-                              <span className="exam-duration">⏱️ {exam.duration}</span>
-                            </div>
-                          </div>
-                          <span className={`status-badge status-${exam.status}`}>{exam.status}</span>
+                <div className="exams-list">
+                  {exams.map((exam) => (
+                    <div key={exam.id} className="exam-card">
+                      <div className="exam-content">
+                        <h3>{exam.title}</h3>
+                        <p className="exam-class">{exam.class} • {exam.students} Students</p>
+                        <div className="exam-meta">
+                          <span className="exam-time">📅 {exam.date}</span>
+                          <span className="exam-duration">⏱️ {exam.duration}</span>
                         </div>
-                      ))}
+                      </div>
+                      <span className={`status-badge status-${exam.status}`}>{exam.status}</span>
                     </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
 
-                  {/* Create Exam CTA */}
-                  <div className="cta-card">
-                    <div className="cta-content">
-                      <Plus size={40} className="cta-icon" />
-                      <h3>Create New Exam</h3>
-                      <p>Build and launch your next assessment in minutes</p>
-                    </div>
-                    <button className="cta-button" onClick={() => setShowQuestionModal(true)}>
-                      Get Started
-                    </button>
-                  </div>
+              {/* Create Exam CTA */}
+              <div className="cta-card" style={{
+                background: 'linear-gradient(135deg, #7c3aed 0%, #2563eb 100%)',
+                color: 'white',
+                padding: '2rem',
+                borderRadius: '1.5rem',
+                textAlign: 'center'
+              }}>
+                <div style={{ marginBottom: '1rem' }}>
+                  <Plus size={40} style={{ margin: '0 auto', marginBottom: '1rem' }} />
+                  <h3 style={{ fontSize: '1.5rem', fontWeight: '700', marginBottom: '0.5rem' }}>Create New Exam</h3>
+                  <p style={{ opacity: 0.9 }}>Build and launch your next assessment in minutes</p>
+                </div>
+                <button style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: '1px solid rgba(255, 255, 255, 0.3)',
+                  color: 'white',
+                  padding: '0.75rem 1.5rem',
+                  borderRadius: '0.75rem',
+                  fontWeight: '600',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease'
+                }} onClick={() => setShowQuestionModal(true)}>
+                  Get Started
+                </button>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="grid-right">
+              {/* Analytics Card */}
+              <div className="card analytics-card">
+                <div className="card-header">
+                  <h2>Performance Analytics</h2>
                 </div>
 
-                {/* Right Column */}
-                <div className="grid-right">
-                  {/* Analytics Card */}
-                  <div className="card analytics-card">
-                    <div className="card-header">
-                      <h2>Performance Analytics</h2>
-                    </div>
+                <div className="analytics-content">
+                  <ResponsiveContainer width="100%" height={250}>
+                    <BarChart data={chartData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="name" stroke="#9ca3af" />
+                      <YAxis stroke="#9ca3af" />
+                      <Tooltip 
+                        contentStyle={{
+                          background: '#fff',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '0.5rem'
+                        }}
+                      />
+                      <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
 
-                    <div className="analytics-content">
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={chartData}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                          <XAxis dataKey="name" stroke="#9ca3af" />
-                          <YAxis stroke="#9ca3af" />
-                          <Tooltip
-                            contentStyle={{
-                              background: '#fff',
-                              border: '1px solid #e5e7eb',
-                              borderRadius: '0.5rem'
-                            }}
-                          />
-                          <Bar dataKey="score" fill="#7c3aed" radius={[8, 8, 0, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    <div className="analytics-stats">
-                      <div className="analytics-stat">
-                        <p>Avg Score</p>
-                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[2].value}</p>
-                      </div>
-                      <div className="analytics-stat">
-                        <p>Pass Rate</p>
-                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#2563eb' }}>{stats[3].value}</p>
-                      </div>
-                      <div className="analytics-stat">
-                        <p>Total Exams</p>
-                        <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[0].value}</p>
-                      </div>
-                    </div>
+                <div className="analytics-stats">
+                  <div className="analytics-stat">
+                    <p>Avg Score</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[2].value}</p>
                   </div>
-
-                  {/* Summary Card */}
-                  <div className="card">
-                    <div className="card-header">
-                      <h2>Quick Summary</h2>
-                    </div>
-                    <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                        <span style={{ fontWeight: '600', color: '#374151' }}>Active Exams</span>
-                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.activeExams}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                        <span style={{ fontWeight: '600', color: '#374151' }}>Total Students</span>
-                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2563eb' }}>{summary.totalStudents}</span>
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
-                        <span style={{ fontWeight: '600', color: '#374151' }}>Pending Reviews</span>
-                        <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.pendingReviews}</span>
-                      </div>
-                    </div>
+                  <div className="analytics-stat">
+                    <p>Pass Rate</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#2563eb' }}>{stats[3].value}</p>
+                  </div>
+                  <div className="analytics-stat">
+                    <p>Total Exams</p>
+                    <p style={{ fontSize: '1.875rem', fontWeight: '700', color: '#7c3aed' }}>{stats[0].value}</p>
                   </div>
                 </div>
               </div>
+
+              {/* Summary Card */}
+              <div className="card">
+                <div className="card-header">
+                  <h2>Quick Summary</h2>
+                </div>
+                <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Active Exams</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.activeExams}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Total Students</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#2563eb' }}>{summary.totalStudents}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem', background: '#f3f4f6', borderRadius: '0.75rem' }}>
+                    <span style={{ fontWeight: '600', color: '#374151' }}>Pending Reviews</span>
+                    <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#7c3aed' }}>{summary.pendingReviews}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
             </>
           )}
         </div>
@@ -755,7 +753,7 @@ export default function TeacherDashboard() {
                     onClick={() => {
                       setExam(null);
                       setText('');
-                      setOptions(['', '', '', '']);
+                      setOptions(['','','','']);
                       setCorrectIndex(0);
                     }}
                     style={{
@@ -1079,31 +1077,51 @@ export default function TeacherDashboard() {
                   onClick={async () => {
                     try {
                       setSubmitting(true);
-
-                      // Convert local datetime-local values to UTC ISO strings
+                      
+                      // Convert IST times to UTC for storage
+                      // datetime-local input value is "YYYY-MM-DDTHH:mm" which represents LOCAL/IST time
+                      // We need to treat this as IST and convert to UTC for database storage
+                      const convertISTToUTC = (datetimeLocalStr) => {
+                        if (!datetimeLocalStr) return null;
+                        // Parse the string as if it's in IST
+                        // datetime-local format: "2025-12-07T22:15"
+                        const parts = datetimeLocalStr.split('T');
+                        const [year, month, day] = parts[0].split('-');
+                        const [hours, minutes] = parts[1].split(':');
+                        
+                        // Create a UTC date representing the IST time
+                        // If user enters 22:15, we create a UTC date: 2025-12-07T22:15:00Z
+                        const istUTCEquivalent = new Date(`${year}-${month}-${day}T${hours}:${minutes}:00Z`);
+                        
+                        // Now subtract 5:30 to get actual UTC time
+                        // (because 22:15 IST = 16:45 UTC)
+                        const actualUTC = new Date(istUTCEquivalent.getTime() - (5.5 * 60 * 60 * 1000));
+                        
+                        return actualUTC.toISOString();
+                      };
+                      
                       const settingsToSend = { ...examSettings };
                       if (settingsToSend.availableFrom) {
-                        settingsToSend.availableFrom = new Date(settingsToSend.availableFrom).toISOString();
+                        settingsToSend.availableFrom = convertISTToUTC(settingsToSend.availableFrom);
                       }
                       if (settingsToSend.availableTo) {
-                        settingsToSend.availableTo = new Date(settingsToSend.availableTo).toISOString();
+                        settingsToSend.availableTo = convertISTToUTC(settingsToSend.availableTo);
                       }
                       if (settingsToSend.examStartTime) {
-                        settingsToSend.examStartTime = new Date(settingsToSend.examStartTime).toISOString();
+                        settingsToSend.examStartTime = convertISTToUTC(settingsToSend.examStartTime);
                       }
                       if (settingsToSend.examEndTime) {
-                        settingsToSend.examEndTime = new Date(settingsToSend.examEndTime).toISOString();
+                        settingsToSend.examEndTime = convertISTToUTC(settingsToSend.examEndTime);
                       }
                       if (settingsToSend.resultsReleaseDate) {
-                        settingsToSend.resultsReleaseDate = new Date(settingsToSend.resultsReleaseDate).toISOString();
+                        settingsToSend.resultsReleaseDate = convertISTToUTC(settingsToSend.resultsReleaseDate);
                       }
-
+                      
                       const { data } = await api.put(`/teacher/exams/${exam._id}/settings`, settingsToSend);
                       setExam(data);
                       setShowSettingsModal(false);
-                      // Show method selection modal instead of question modal
-                      setShowMethodModal(true);
-                      alert('Exam settings saved! Now choose how to add questions.');
+                      setShowQuestionModal(true);
+                      alert('Exam settings saved! Now add your questions.');
                     } catch (error) {
                       alert('Failed to save exam settings');
                     } finally {
@@ -1128,18 +1146,6 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
-
-      {/* Question Setup Method Modal */}
-      {showMethodModal && (
-        <QuestionSetupMethodModal
-          onMethodSelect={handleMethodSelect}
-          onCancel={() => {
-            setShowMethodModal(false);
-            setExam(null);
-          }}
-        />
-      )}
-
     </div>
   );
-};
+}

@@ -33,19 +33,8 @@ router.get('/exams', async (req, res) => {
       .populate('createdBy', 'name email')
       .sort({ createdAt: -1 });
     
-    console.log(`📋 Total exams in database: ${exams.length}`);
-    const statusBreakdown = {};
-    exams.forEach(exam => {
-      statusBreakdown[exam.status] = (statusBreakdown[exam.status] || 0) + 1;
-      if (exam.status === 'pending') {
-        console.log(`  - ${exam.title} (${exam._id}): PENDING`);
-      }
-    });
-    console.log('Status breakdown:', statusBreakdown);
-    
     res.json({
       count: exams.length,
-      statusBreakdown,
       exams: exams.map(exam => ({
         id: exam._id,
         title: exam.title,
@@ -58,7 +47,6 @@ router.get('/exams', async (req, res) => {
       }))
     });
   } catch (error) {
-    console.error('❌ Error fetching exams:', error);
     res.status(500).json({ error: 'Failed to fetch exams' });
   }
 });
@@ -162,24 +150,10 @@ router.get('/pending-exams', async (req, res) => {
   try {
     const now = new Date();
     
-    console.log('🔍 DEBUG: Searching for pending exams...');
-    
     // Get all pending exams
     const pendingExams = await Exam.find({ status: 'pending' })
       .populate('createdBy', 'name email role')
       .sort({ createdAt: -1 }); // Most recent first
-    
-    console.log(`📊 Found ${pendingExams.length} pending exams`);
-    pendingExams.forEach((exam, idx) => {
-      console.log(`  [${idx + 1}] "${exam.title}"`);
-      console.log(`      ID: ${exam._id}`);
-      console.log(`      Status: ${exam.status}`);
-      console.log(`      availableFrom: ${exam.availableFrom}`);
-      console.log(`      examStartTime: ${exam.examStartTime}`);
-      console.log(`      isPreviewComplete: ${exam.isPreviewComplete}`);
-      console.log(`      isFinalized: ${exam.isFinalized}`);
-      console.log(`      questions: ${exam.questions?.length || 0}`);
-    });
     
     // Check for expired exams (registration period has passed)
     const examsWithStatus = pendingExams.map(exam => {
@@ -193,58 +167,17 @@ router.get('/pending-exams', async (req, res) => {
         expiryReason = 'Registration period has already started';
       }
       
-      // Check if exam is scheduled to start soon (within 1 hour)
-      if (exam.examStartTime && now.getTime() >= new Date(exam.examStartTime).getTime() - 60 * 60 * 1000) {
-        canApprove = false;
-        expiryReason = expiryReason || 'Exam is scheduled to start within 1 hour';
-      }
-      
-      const examObj = exam.toObject();
       return {
-        ...examObj,
+        ...exam.toObject(),
         canApprove,
         expiryReason,
         isExpired: !canApprove
       };
     });
     
-    console.log(`✅ Returning ${examsWithStatus.length} exams`);
     res.json(examsWithStatus);
   } catch (error) {
-    console.error('❌ Error fetching pending exams:', error);
     res.status(500).json({ error: 'Failed to fetch pending exams', details: error.message });
-  }
-});
-
-// Debug endpoint: Show full details of pending exams
-router.get('/pending-exams-detail', async (req, res) => {
-  try {
-    const pendingExams = await Exam.find({ status: 'pending' })
-      .populate('createdBy', 'name email role');
-    
-    const details = pendingExams.map(exam => ({
-      _id: exam._id,
-      title: exam.title,
-      status: exam.status,
-      createdAt: exam.createdAt,
-      updatedAt: exam.updatedAt,
-      availableFrom: exam.availableFrom,
-      availableTo: exam.availableTo,
-      examStartTime: exam.examStartTime,
-      examEndTime: exam.examEndTime,
-      isPreviewComplete: exam.isPreviewComplete,
-      isFinalized: exam.isFinalized,
-      createdBy: exam.createdBy,
-      questionsCount: exam.questions?.length || 0,
-      chunksCount: exam.chunks?.length || 0
-    }));
-    
-    res.json({
-      count: pendingExams.length,
-      exams: details
-    });
-  } catch (error) {
-    res.status(500).json({ error: error.message });
   }
 });
 
@@ -252,7 +185,7 @@ router.get('/pending-exams-detail', async (req, res) => {
 router.patch('/exam-status/:examId', async (req, res) => {
   try {
     const { examId } = req.params;
-    const { status, notes, conditions } = req.body; // 'approved' | 'rejected' | 'expired'
+    const { status } = req.body; // 'approved' | 'rejected' | 'expired'
     
     if (!['approved', 'rejected', 'expired'].includes(status)) {
       return res.status(400).json({ error: 'Invalid status' });
@@ -262,7 +195,6 @@ router.patch('/exam-status/:examId', async (req, res) => {
     if (!exam) return res.status(404).json({ error: 'Exam not found' });
     
     const now = new Date();
-    const oldStatus = exam.status;
     
     // Check if exam can still be approved
     if (status === 'approved' && exam.status === 'pending') {
@@ -283,32 +215,10 @@ router.patch('/exam-status/:examId', async (req, res) => {
       }
     }
     
-    // Store status change with approval/rejection details
     exam.status = status;
-    
-    if (status === 'approved') {
-      exam.approvalNotes = notes || null;
-      exam.approvalConditions = conditions || null;
-      exam.approvedBy = req.user?.id || 'debug-user'; // Use debug user if no req.user
-      exam.approvedAt = now;
-      // Clear rejection fields if changing from rejected to approved
-      exam.rejectionReason = null;
-      exam.rejectedBy = null;
-      exam.rejectedAt = null;
-    } else if (status === 'rejected') {
-      exam.rejectionReason = notes || 'No reason provided';
-      exam.rejectedBy = req.user?.id || 'debug-user'; // Use debug user if no req.user
-      exam.rejectedAt = now;
-      // Clear approval fields if changing from approved to rejected
-      exam.approvalNotes = null;
-      exam.approvalConditions = null;
-      exam.approvedBy = null;
-      exam.approvedAt = null;
-    }
-    
     await exam.save();
     
-    await exam.populate('createdBy', 'name email role').populate('approvedBy', 'name email').populate('rejectedBy', 'name email');
+    await exam.populate('createdBy', 'name email role');
     res.json(exam);
   } catch (error) {
     res.status(500).json({ error: 'Failed to update exam status', details: error.message });

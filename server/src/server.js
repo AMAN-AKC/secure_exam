@@ -3,7 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import morgan from 'morgan';
 import { connectDb } from './config/db.js';
-import { seedAdminIfNeeded, seedSampleData, seedDefaultCategories } from './config/seed.js';
+import { seedAdminIfNeeded, seedSampleData } from './config/seed.js';
 import router from './routes/index.js';
 
 dotenv.config();
@@ -18,16 +18,6 @@ app.use(cors({
   ],
   credentials: true
 }));
-
-// Security headers middleware
-app.use((req, res, next) => {
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Cache-Control', 'public, max-age=3600');
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-  next();
-});
-
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('dev'));
 
@@ -42,7 +32,6 @@ const PORT = process.env.PORT || 4000;
 connectDb()
   .then(async () => {
     await seedAdminIfNeeded();
-    await seedDefaultCategories();
     
     // Only seed sample data if explicitly enabled via environment variable
     if (process.env.SEED_SAMPLE_DATA === 'true') {

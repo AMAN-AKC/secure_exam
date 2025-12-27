@@ -171,7 +171,7 @@ router.get('/pending-exams', async (req, res) => {
     
     console.log(`📊 Found ${pendingExams.length} pending exams`);
     pendingExams.forEach((exam, idx) => {
-      console.log(`  [${idx + 1}] ${exam.title} - availableFrom: ${exam.availableFrom}, createdAt: ${exam.createdAt}`);
+      console.log(`  [${idx + 1}] ${exam.title} - ID: ${exam._id}, availableFrom: ${exam.availableFrom}, examStartTime: ${exam.examStartTime}`);
     });
     
     // Check for expired exams (registration period has passed)
@@ -186,8 +186,15 @@ router.get('/pending-exams', async (req, res) => {
         expiryReason = 'Registration period has already started';
       }
       
+      // Check if exam is scheduled to start soon (within 1 hour)
+      if (exam.examStartTime && now.getTime() >= new Date(exam.examStartTime).getTime() - 60 * 60 * 1000) {
+        canApprove = false;
+        expiryReason = expiryReason || 'Exam is scheduled to start within 1 hour';
+      }
+      
+      const examObj = exam.toObject();
       return {
-        ...exam.toObject(),
+        ...examObj,
         canApprove,
         expiryReason,
         isExpired: !canApprove
